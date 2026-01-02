@@ -1,4 +1,3 @@
-/* (cole aqui o styles.css completo da versão anterior — igual) */
 :root{
   --bg: #07070b;
   --bg2: #0b0b12;
@@ -151,6 +150,23 @@ body{
 .fineprint-title{ font-weight: 760; }
 .fineprint-text{ color:var(--muted); font-size:12.5px; margin-top:4px; }
 
+/* ✅ NOVO: direitos reservados no rodapé da sidebar */
+.fineprint-rights{
+  margin-top: 8px;
+  color: rgba(255,255,255,.62);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.fineprint-rights:first-of-type{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.fineprint-rights b{
+  color: rgba(242,223,154,.92);
+  font-weight: 760;
+}
+
 .content{ padding: 16px; }
 .view{ max-width: 1200px; margin: 0 auto; }
 .hidden{ display:none !important; }
@@ -236,6 +252,17 @@ body{
 }
 .hint-title{ font-weight: 760; color: rgba(242,223,154,.92); font-size: 13px; }
 .hint-line{ color: rgba(255,255,255,.80); margin-top: 6px; font-size: 13px; }
+
+/* ✅ NOVO: direitos reservados na tela de login */
+.login-rights{
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.62);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+}
 
 .mini-note{
   margin-top: 14px;
