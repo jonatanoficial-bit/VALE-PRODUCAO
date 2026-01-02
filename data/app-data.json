@@ -4,72 +4,28 @@
     "lastUpdatedISO": "2026-01-01T00:00:00.000Z",
     "spotifyProfile": "https://open.spotify.com/"
   },
-
   "users": [
     { "username": "admin", "password": "1234", "role": "admin", "display": "Admin • Vale Produção" },
 
-    { "username": "artista1", "password": "1234", "role": "artist", "artistId": "artista-001", "display": "Artista 1" },
-    { "username": "artista2", "password": "1234", "role": "artist", "artistId": "artista-002", "display": "Artista 2" },
-    { "username": "artista3", "password": "1234", "role": "artist", "artistId": "artista-003", "display": "Artista 3" },
-    { "username": "artista4", "password": "1234", "role": "artist", "artistId": "artista-004", "display": "Artista 4" },
-    { "username": "artista5", "password": "1234", "role": "artist", "artistId": "artista-005", "display": "Artista 5" },
-    { "username": "artista6", "password": "1234", "role": "artist", "artistId": "artista-006", "display": "Artista 6" },
-
-    { "username": "artista7", "password": "1234", "role": "artist", "artistId": "artista-007", "display": "Artista 7" },
-    { "username": "artista8", "password": "1234", "role": "artist", "artistId": "artista-008", "display": "Artista 8" },
-    { "username": "artista9", "password": "1234", "role": "artist", "artistId": "artista-009", "display": "Artista 9" },
-    { "username": "artista10", "password": "1234", "role": "artist", "artistId": "artista-010", "display": "Artista 10" }
+    { "username": "arianemazur", "password": "1234", "role": "artist", "artistId": "artista-001", "display": "Ariane Mazur" },
+    { "username": "dafnykamila", "password": "1234", "role": "artist", "artistId": "artista-002", "display": "Dafny Kamila" },
+    { "username": "atalaiaindio", "password": "1234", "role": "artist", "artistId": "artista-003", "display": "Ataláia Indio" },
+    { "username": "fabiooliveira", "password": "1234", "role": "artist", "artistId": "artista-004", "display": "Fabio Oliveira" },
+    { "username": "danieloly", "password": "1234", "role": "artist", "artistId": "artista-005", "display": "Daniel Oly" },
+    { "username": "juhsilva", "password": "1234", "role": "artist", "artistId": "artista-006", "display": "Juh Silva" },
+    { "username": "negosilva", "password": "1234", "role": "artist", "artistId": "artista-007", "display": "Nego Silva" }
   ],
-
   "artists": [
-    { "id": "artista-001", "name": "Artista 1", "contractPdfPath": "./assets/contratos/artista-001.pdf" },
-    { "id": "artista-002", "name": "Artista 2", "contractPdfPath": "./assets/contratos/artista-002.pdf" },
-    { "id": "artista-003", "name": "Artista 3", "contractPdfPath": "./assets/contratos/artista-003.pdf" },
-    { "id": "artista-004", "name": "Artista 4", "contractPdfPath": "./assets/contratos/artista-004.pdf" },
-    { "id": "artista-005", "name": "Artista 5", "contractPdfPath": "./assets/contratos/artista-005.pdf" },
-    { "id": "artista-006", "name": "Artista 6", "contractPdfPath": "./assets/contratos/artista-006.pdf" },
-
-    { "id": "artista-007", "name": "Artista 7", "contractPdfPath": "./assets/contratos/artista-007.pdf" },
-    { "id": "artista-008", "name": "Artista 8", "contractPdfPath": "./assets/contratos/artista-008.pdf" },
-    { "id": "artista-009", "name": "Artista 9", "contractPdfPath": "./assets/contratos/artista-009.pdf" },
-    { "id": "artista-010", "name": "Artista 10", "contractPdfPath": "./assets/contratos/artista-010.pdf" }
+    { "id": "artista-001", "name": "Ariane Mazur", "contractPdfPath": "./assets/contratos/artista-001.pdf" },
+    { "id": "artista-002", "name": "Dafny Kamila", "contractPdfPath": "./assets/contratos/artista-002.pdf" },
+    { "id": "artista-003", "name": "Ataláia Indio", "contractPdfPath": "./assets/contratos/artista-003.pdf" },
+    { "id": "artista-004", "name": "Fabio Oliveira", "contractPdfPath": "./assets/contratos/artista-004.pdf" },
+    { "id": "artista-005", "name": "Daniel Oly", "contractPdfPath": "./assets/contratos/artista-005.pdf" },
+    { "id": "artista-006", "name": "Juh Silva", "contractPdfPath": "./assets/contratos/artista-006.pdf" },
+    { "id": "artista-007", "name": "Nego Silva", "contractPdfPath": "./assets/contratos/artista-007.pdf" }
   ],
-
-  "releasedTracks": [
-    {
-      "title": "Single Exemplo",
-      "artistId": "artista-001",
-      "artist": "Artista 1",
-      "releaseDate": "2025-12-20",
-      "spotifyUrl": "https://open.spotify.com/",
-      "youtubeUrl": "https://youtube.com/"
-    }
-  ],
-
-  "projects": [
-    {
-      "id": "proj-001",
-      "artistId": "artista-001",
-      "title": "EP — Em Construção",
-      "artist": "Artista 1",
-      "targetRelease": "2026-03-20",
-      "status": "Produção",
-      "notes": "Direção artística em andamento. Ajustar timbres e revisar mix final.",
-      "checklist": [
-        { "id": "c1", "label": "Briefing e referência sonora", "done": true },
-        { "id": "c2", "label": "Pré-produção (guia / clique / estrutura)", "done": true },
-        { "id": "c3", "label": "Gravação (voz e instrumentos)", "done": false },
-        { "id": "c4", "label": "Edição e afinação", "done": false },
-        { "id": "c5", "label": "Mixagem", "done": false },
-        { "id": "c6", "label": "Masterização", "done": false },
-        { "id": "c7", "label": "Capa e identidade visual", "done": false },
-        { "id": "c8", "label": "Distribuição (Spotify/Deezer/Apple)", "done": false },
-        { "id": "c9", "label": "Press kit / conteúdo de divulgação", "done": false },
-        { "id": "c10", "label": "Lançamento + pós-lançamento", "done": false }
-      ]
-    }
-  ],
-
+  "releasedTracks": [],
+  "projects": [],
   "usefulInfo": [
     {
       "title": "Checklist pré-lançamento (rápido)",
@@ -80,29 +36,17 @@
       "content": "Evite mudanças de áudio/capa perto da data. Alinhe o pré-save e publique conteúdo curto (reels/tiktok) 7–14 dias antes."
     }
   ],
-
-  "events": [
-    {
-      "title": "Ensaio Geral",
-      "date": "2026-02-10",
-      "location": "Studio Vale Produção",
-      "details": "Revisar repertório e performance. Chegar 30 min antes."
-    }
-  ],
-
+  "events": [],
   "links": [
     { "label": "Spotify", "url": "https://open.spotify.com/" },
     { "label": "Instagram", "url": "https://instagram.com/" },
     { "label": "YouTube", "url": "https://youtube.com/" },
     { "label": "WhatsApp", "url": "https://wa.me/" }
   ],
-
   "analytics": {
     "notes": "Dados inseridos pelo Admin.",
     "series": [
-      { "scope": "artist", "artistId": "artista-001", "platform": "Spotify", "metric": "Ouvintes mensais", "value": 1200, "date": "2025-12-01" },
-      { "scope": "artist", "artistId": "artista-001", "platform": "Instagram", "metric": "Seguidores", "value": 3400, "date": "2025-12-01" },
-      { "scope": "global", "platform": "Geral", "metric": "Artistas ativos", "value": 6, "date": "2026-01-01" }
+      { "scope": "global", "platform": "Geral", "metric": "Artistas oficiais", "value": 7, "date": "2026-01-01" }
     ]
   }
 }
