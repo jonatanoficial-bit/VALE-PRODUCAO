@@ -5,7 +5,7 @@
     "spotifyProfile": "https://open.spotify.com/"
   },
   "users": [
-    { "username": "admin", "password": "1234", "role": "admin", "display": "Admin • Vale Produção" },
+    { "username": "admin", "password": "ariane22", "role": "admin", "display": "Admin • Vale Produção" },
 
     { "username": "arianemazur", "password": "1234", "role": "artist", "artistId": "artista-001", "display": "Ariane Mazur" },
     { "username": "dafnykamila", "password": "1234", "role": "artist", "artistId": "artista-002", "display": "Dafny Kamila" },
