@@ -1,13 +1,13 @@
-const CACHE_VERSION = "v1.1.0";
+const CACHE_VERSION = "v2.0.0";
 const CACHE_NAME = `vale-portal-${CACHE_VERSION}`;
 
+// Cache apenas do "app" (shell). NÃO colocar data/app-data.json aqui.
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./data/app-data.json",
   "./assets/logo.png",
   "./assets/icon-192.png",
   "./assets/icon-512.png"
@@ -27,17 +27,32 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Estratégia:
+// - Para app shell: cache-first
+// - Para data/app-data.json: network-first (sempre tenta pegar atualizado)
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
+  const url = new URL(req.url);
+
+  // Sempre buscar dados do servidor
+  if (url.pathname.endsWith("/data/app-data.json")) {
+    event.respondWith(
+      fetch(req, { cache: "no-store" })
+        .then((res) => res)
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // App shell
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
 
       return fetch(req)
         .then((res) => {
-          const url = new URL(req.url);
           if (url.origin === location.origin) {
             const clone = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
