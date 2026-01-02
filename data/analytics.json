@@ -1,0 +1,29 @@
+{
+  "artists": {
+    "artista-001": {
+      "name": "Ariane Mazur",
+      "analytics": [
+        {
+          "period": "2026-01",
+          "music": { "streams": 0, "downloads": 0, "top_track": "" },
+          "countries": [
+            { "country": "Brasil", "plays": 0 },
+            { "country": "Portugal", "plays": 0 },
+            { "country": "Estados Unidos", "plays": 0 }
+          ],
+          "social": {
+            "instagram": { "followers": 0, "engagement": 0 },
+            "facebook": { "followers": 0, "engagement": 0 },
+            "youtube": { "subscribers": 0, "views": 0 }
+          }
+        }
+      ]
+    },
+    "artista-002": { "name": "Dafny Kamila", "analytics": [] },
+    "artista-003": { "name": "Ataláia Indio", "analytics": [] },
+    "artista-004": { "name": "Fabio Oliveira", "analytics": [] },
+    "artista-005": { "name": "Daniel Oly", "analytics": [] },
+    "artista-006": { "name": "Juh Silva", "analytics": [] },
+    "artista-007": { "name": "Nego Silva", "analytics": [] }
+  }
+}
