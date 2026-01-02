@@ -1,32 +1,57 @@
 {
   "meta": {
     "portalName": "Vale Produção — Portal",
-    "contractPdfPath": "./assets/contrato-assinado.pdf",
-    "spotifyProfile": "https://open.spotify.com/",
-    "lastUpdatedISO": "2026-01-01T00:00:00.000Z"
+    "lastUpdatedISO": "2026-01-01T00:00:00.000Z",
+    "spotifyProfile": "https://open.spotify.com/"
   },
-  "artists": [
-    {
-      "id": "artista-001",
-      "name": "Artista Exemplo",
-      "genre": "Pop/Gospel",
-      "contact": "contato@exemplo.com"
-    }
+
+  "users": [
+    { "username": "admin", "password": "1234", "role": "admin", "display": "Admin • Vale Produção" },
+
+    { "username": "artista1", "password": "1234", "role": "artist", "artistId": "artista-001", "display": "Artista 1" },
+    { "username": "artista2", "password": "1234", "role": "artist", "artistId": "artista-002", "display": "Artista 2" },
+    { "username": "artista3", "password": "1234", "role": "artist", "artistId": "artista-003", "display": "Artista 3" },
+    { "username": "artista4", "password": "1234", "role": "artist", "artistId": "artista-004", "display": "Artista 4" },
+    { "username": "artista5", "password": "1234", "role": "artist", "artistId": "artista-005", "display": "Artista 5" },
+    { "username": "artista6", "password": "1234", "role": "artist", "artistId": "artista-006", "display": "Artista 6" },
+
+    { "username": "artista7", "password": "1234", "role": "artist", "artistId": "artista-007", "display": "Artista 7" },
+    { "username": "artista8", "password": "1234", "role": "artist", "artistId": "artista-008", "display": "Artista 8" },
+    { "username": "artista9", "password": "1234", "role": "artist", "artistId": "artista-009", "display": "Artista 9" },
+    { "username": "artista10", "password": "1234", "role": "artist", "artistId": "artista-010", "display": "Artista 10" }
   ],
+
+  "artists": [
+    { "id": "artista-001", "name": "Artista 1", "contractPdfPath": "./assets/contratos/artista-001.pdf" },
+    { "id": "artista-002", "name": "Artista 2", "contractPdfPath": "./assets/contratos/artista-002.pdf" },
+    { "id": "artista-003", "name": "Artista 3", "contractPdfPath": "./assets/contratos/artista-003.pdf" },
+    { "id": "artista-004", "name": "Artista 4", "contractPdfPath": "./assets/contratos/artista-004.pdf" },
+    { "id": "artista-005", "name": "Artista 5", "contractPdfPath": "./assets/contratos/artista-005.pdf" },
+    { "id": "artista-006", "name": "Artista 6", "contractPdfPath": "./assets/contratos/artista-006.pdf" },
+
+    { "id": "artista-007", "name": "Artista 7", "contractPdfPath": "./assets/contratos/artista-007.pdf" },
+    { "id": "artista-008", "name": "Artista 8", "contractPdfPath": "./assets/contratos/artista-008.pdf" },
+    { "id": "artista-009", "name": "Artista 9", "contractPdfPath": "./assets/contratos/artista-009.pdf" },
+    { "id": "artista-010", "name": "Artista 10", "contractPdfPath": "./assets/contratos/artista-010.pdf" }
+  ],
+
   "releasedTracks": [
     {
       "title": "Single Exemplo",
-      "artist": "Artista Exemplo",
+      "artistId": "artista-001",
+      "artist": "Artista 1",
       "releaseDate": "2025-12-20",
       "spotifyUrl": "https://open.spotify.com/",
       "youtubeUrl": "https://youtube.com/"
     }
   ],
+
   "projects": [
     {
       "id": "proj-001",
+      "artistId": "artista-001",
       "title": "EP — Em Construção",
-      "artist": "Artista Exemplo",
+      "artist": "Artista 1",
       "targetRelease": "2026-03-20",
       "status": "Produção",
       "notes": "Direção artística em andamento. Ajustar timbres e revisar mix final.",
@@ -44,6 +69,7 @@
       ]
     }
   ],
+
   "usefulInfo": [
     {
       "title": "Checklist pré-lançamento (rápido)",
@@ -54,6 +80,7 @@
       "content": "Evite mudanças de áudio/capa perto da data. Alinhe o pré-save e publique conteúdo curto (reels/tiktok) 7–14 dias antes."
     }
   ],
+
   "events": [
     {
       "title": "Ensaio Geral",
@@ -62,18 +89,20 @@
       "details": "Revisar repertório e performance. Chegar 30 min antes."
     }
   ],
+
   "links": [
     { "label": "Spotify", "url": "https://open.spotify.com/" },
     { "label": "Instagram", "url": "https://instagram.com/" },
     { "label": "YouTube", "url": "https://youtube.com/" },
     { "label": "WhatsApp", "url": "https://wa.me/" }
   ],
+
   "analytics": {
-    "notes": "Dados inseridos pelo Admin. Use export/import para backup.",
+    "notes": "Dados inseridos pelo Admin.",
     "series": [
-      { "platform": "Spotify", "metric": "Ouvintes mensais", "value": 1200, "date": "2025-12-01" },
-      { "platform": "Instagram", "metric": "Seguidores", "value": 3400, "date": "2025-12-01" },
-      { "platform": "YouTube", "metric": "Inscritos", "value": 560, "date": "2025-12-01" }
+      { "scope": "artist", "artistId": "artista-001", "platform": "Spotify", "metric": "Ouvintes mensais", "value": 1200, "date": "2025-12-01" },
+      { "scope": "artist", "artistId": "artista-001", "platform": "Instagram", "metric": "Seguidores", "value": 3400, "date": "2025-12-01" },
+      { "scope": "global", "platform": "Geral", "metric": "Artistas ativos", "value": 6, "date": "2026-01-01" }
     ]
   }
 }
