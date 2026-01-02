@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0f" />
+  <meta name="description" content="Portal Vale Produção — Produtores e Artistas" />
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/icon-192.png" />
+  <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+
+  <title>Vale Produção — Portal</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <div class="bg-ornaments" aria-hidden="true">
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="gridlines"></div>
+  </div>
+
+  <header class="app-header">
+    <div class="brand">
+      <img class="brand-logo" src="./assets/logo.png" alt="Vale Produção" />
+      <div class="brand-meta">
+        <div class="brand-title">Vale Produção</div>
+        <div class="brand-subtitle">Portal • Produtores & Artistas</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="installBtn" class="btn btn-ghost hidden" type="button" title="Instalar app">
+        Instalar
+      </button>
+
+      <div id="userPill" class="user-pill hidden" title="Sessão">
+        <span class="dot"></span>
+        <span id="userPillText">—</span>
+      </div>
+
+      <button id="logoutBtn" class="btn btn-gold hidden" type="button">
+        Sair
+      </button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <nav class="nav">
+        <a class="nav-item" href="#/dashboard" data-route="dashboard">
+          <span class="nav-ic">⟡</span><span>Dashboard</span>
+        </a>
+        <a class="nav-item" href="#/contrato" data-route="contrato">
+          <span class="nav-ic">▦</span><span>Contrato (PDF)</span>
+        </a>
+        <a class="nav-item" href="#/lancadas" data-route="lancadas">
+          <span class="nav-ic">♪</span><span>Músicas lançadas</span>
+        </a>
+        <a class="nav-item" href="#/construcao" data-route="construcao">
+          <span class="nav-ic">⚙</span><span>Em construção</span>
+        </a>
+        <a class="nav-item" href="#/infos" data-route="infos">
+          <span class="nav-ic">✦</span><span>Infos úteis</span>
+        </a>
+        <a class="nav-item" href="#/eventos" data-route="eventos">
+          <span class="nav-ic">⌁</span><span>Eventos</span>
+        </a>
+        <a class="nav-item" href="#/links" data-route="links">
+          <span class="nav-ic">↗</span><span>Links</span>
+        </a>
+        <a class="nav-item" href="#/analytics" data-route="analytics">
+          <span class="nav-ic">▤</span><span>Analytics</span>
+        </a>
+
+        <div class="nav-sep"></div>
+
+        <a class="nav-item nav-admin hidden" href="#/admin" data-route="admin" id="adminNav">
+          <span class="nav-ic">♛</span><span>Admin</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="fineprint">
+          <div class="fineprint-title">Vale Produção</div>
+          <div class="fineprint-text">Estética dourado/preto • PWA instalável</div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="content">
+      <!-- LOGIN VIEW -->
+      <section id="view-login" class="view">
+        <div class="center-wrap">
+          <div class="card login-card">
+            <div class="login-top">
+              <img class="login-logo" src="./assets/logo.png" alt="Logo Vale Produção">
+              <div>
+                <h1 class="h1">Acesso ao Portal</h1>
+                <p class="muted">Entre como <b>Admin</b> (produtores) ou <b>Artista</b>.</p>
+              </div>
+            </div>
+
+            <form id="loginForm" class="form">
+              <div class="form-row">
+                <label class="label" for="loginUser">Usuário</label>
+                <input id="loginUser" class="input" autocomplete="username" placeholder="ex: admin ou artista" required />
+              </div>
+
+              <div class="form-row">
+                <label class="label" for="loginPass">Senha</label>
+                <input id="loginPass" class="input" type="password" autocomplete="current-password" placeholder="••••••••" required />
+              </div>
+
+              <button class="btn btn-gold btn-block" type="submit">Entrar</button>
+
+              <div class="hint">
+                <div class="hint-title">Credenciais de exemplo (troque depois)</div>
+                <div class="hint-line"><b>Admin:</b> admin / 1234</div>
+                <div class="hint-line"><b>Artista:</b> artista / 1234</div>
+              </div>
+            </form>
+          </div>
+
+          <div class="mini-note">
+            Dica: após o primeiro acesso, o app fica disponível offline (PWA).
+          </div>
+        </div>
+      </section>
+
+      <!-- APP VIEWS -->
+      <section id="view-app" class="view hidden">
+        <div class="topbar">
+          <button id="mobileMenuBtn" class="btn btn-ghost mobile-only" type="button">Menu</button>
+          <div class="crumbs">
+            <span class="crumb">Portal</span>
+            <span class="crumb-sep">/</span>
+            <span id="pageTitle" class="crumb active">—</span>
+          </div>
+          <div class="topbar-right">
+            <span class="badge" id="roleBadge">—</span>
+          </div>
+        </div>
+
+        <div id="page" class="page"></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
