@@ -150,7 +150,6 @@ body{
 .fineprint-title{ font-weight: 760; }
 .fineprint-text{ color:var(--muted); font-size:12.5px; margin-top:4px; }
 
-/* ✅ NOVO: direitos reservados no rodapé da sidebar */
 .fineprint-rights{
   margin-top: 8px;
   color: rgba(255,255,255,.62);
@@ -161,10 +160,6 @@ body{
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid rgba(255,255,255,.08);
-}
-.fineprint-rights b{
-  color: rgba(242,223,154,.92);
-  font-weight: 760;
 }
 
 .content{ padding: 16px; }
@@ -243,17 +238,6 @@ body{
   background: rgba(255,255,255,.03);
 }
 
-.hint{
-  margin-top: 14px;
-  padding: 12px 12px;
-  border-radius: 16px;
-  background: rgba(215,179,90,.06);
-  border: 1px solid rgba(215,179,90,.18);
-}
-.hint-title{ font-weight: 760; color: rgba(242,223,154,.92); font-size: 13px; }
-.hint-line{ color: rgba(255,255,255,.80); margin-top: 6px; font-size: 13px; }
-
-/* ✅ NOVO: direitos reservados na tela de login */
 .login-rights{
   margin-top: 14px;
   padding-top: 12px;
@@ -262,14 +246,6 @@ body{
   font-size: 12px;
   line-height: 1.35;
   text-align: center;
-}
-
-.mini-note{
-  margin-top: 14px;
-  color: rgba(255,255,255,.70);
-  font-size: 13px;
-  max-width: 620px;
-  text-align:center;
 }
 
 .topbar{
