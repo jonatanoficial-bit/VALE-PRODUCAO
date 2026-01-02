@@ -84,7 +84,7 @@
       <div class="sidebar-footer">
         <div class="fineprint">
           <div class="fineprint-title">Vale Produção</div>
-          <div class="fineprint-text">Estética dourado/preto • PWA instalável</div>
+          <div class="fineprint-text">PWA instalável • Login individual</div>
         </div>
       </div>
     </aside>
@@ -98,14 +98,14 @@
               <img class="login-logo" src="./assets/logo.png" alt="Logo Vale Produção">
               <div>
                 <h1 class="h1">Acesso ao Portal</h1>
-                <p class="muted">Entre como <b>Admin</b> (produtores) ou <b>Artista</b>.</p>
+                <p class="muted">Entre com seu <b>usuário</b> e <b>senha</b>.</p>
               </div>
             </div>
 
             <form id="loginForm" class="form">
               <div class="form-row">
                 <label class="label" for="loginUser">Usuário</label>
-                <input id="loginUser" class="input" autocomplete="username" placeholder="ex: admin ou artista" required />
+                <input id="loginUser" class="input" autocomplete="username" placeholder="ex: daphne" required />
               </div>
 
               <div class="form-row">
@@ -116,15 +116,17 @@
               <button class="btn btn-gold btn-block" type="submit">Entrar</button>
 
               <div class="hint">
-                <div class="hint-title">Credenciais de exemplo (troque depois)</div>
-                <div class="hint-line"><b>Admin:</b> admin / 1234</div>
-                <div class="hint-line"><b>Artista:</b> artista / 1234</div>
+                <div class="hint-title">Admin (exemplo)</div>
+                <div class="hint-line"><b>admin</b> / <b>1234</b></div>
+                <div class="hint-line" style="margin-top:8px;opacity:.85">
+                  Você vai cadastrar os artistas no arquivo <b>data/app-data.json</b>.
+                </div>
               </div>
             </form>
           </div>
 
           <div class="mini-note">
-            Dica: após o primeiro acesso, o app fica disponível offline (PWA).
+            Sem nuvem e sem custo: o Admin faz backup via Exportar/Importar JSON.
           </div>
         </div>
       </section>
