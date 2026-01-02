@@ -16,10 +16,10 @@ const UI = {
   adminNav: $("#adminNav")
 };
 
-const AUTH_KEY = "vp.auth.session.v3";
-const ADMIN_STORE_KEY = "vp.portal.admin.data.v3";      // só admin
-const CHECKLIST_KEY_PREFIX = "vp.portal.checklist.v1."; // por usuário
-const METRIC_KEY_STORAGE = "vp.analytics.selectedMetric.v3";
+const AUTH_KEY = "vp.auth.session.v5";
+const ADMIN_STORE_KEY = "vp.portal.admin.data.v5";
+const CHECKLIST_KEY_PREFIX = "vp.portal.checklist.v1.";
+const ADMIN_ANALYTICS_DRAFT_KEY = "vp.portal.analytics.draft.v1";
 
 const ROUTES = {
   dashboard: { title: "Dashboard", render: renderDashboard },
@@ -92,19 +92,15 @@ const Auth = {
   }
 };
 
-/* ---------------- CHECKLIST POR USUÁRIO (não quebra updates) ---------------- */
+/* ---------------- CHECKLIST (por usuário) ---------------- */
 const ChecklistStore = {
-  _key(sess) {
-    return CHECKLIST_KEY_PREFIX + (sess.username || "anon");
-  },
+  _key(sess) { return CHECKLIST_KEY_PREFIX + (sess.username || "anon"); },
   load(sess) {
     const raw = localStorage.getItem(this._key(sess));
     const obj = raw ? safeJSON.parse(raw) : null;
     return obj && typeof obj === "object" ? obj : {};
   },
-  save(sess, obj) {
-    localStorage.setItem(this._key(sess), safeJSON.stringify(obj));
-  },
+  save(sess, obj) { localStorage.setItem(this._key(sess), safeJSON.stringify(obj)); },
   getDone(sess, projectId, checkId) {
     const map = this.load(sess);
     return !!(map?.[projectId]?.[checkId]);
@@ -123,78 +119,83 @@ const ChecklistStore = {
   }
 };
 
-/* ---------------- DATASTORE ----------------
-   - Base (oficial) sempre vem de /data/app-data.json (network-first)
-   - Admin pode ter "draft local" (admin store) para editar sem backend
-   - Artistas SEMPRE usam base oficial (para receber updates do Git)
-*/
+/* ---------------- DATASTORE ---------------- */
 const DataStore = {
   base: null,
   data: null,
+  analyticsBase: null,
+  analyticsData: null,
 
-  async loadBaseFromServer() {
-    // Cache-busting para evitar arquivo “antigo”
+  async loadJSON(path) {
     const v = Date.now();
-    const url = `./data/app-data.json?v=${v}`;
-    const base = await fetch(url, { cache: "no-store" }).then(r => r.json());
-    return base;
+    const url = `${path}?v=${v}`;
+    return await fetch(url, { cache: "no-store" }).then(r => r.json());
   },
 
   async init(sess) {
-    this.base = await this.loadBaseFromServer().catch(() => null);
-    if (!this._isValid(this.base)) {
-      this.base = this._emptyBase();
-    }
+    this.base = await this.loadJSON("./data/app-data.json").catch(() => null);
+    if (!this._isValidApp(this.base)) this.base = this._emptyApp();
+
+    this.analyticsBase = await this.loadJSON("./data/analytics.json").catch(() => null);
+    if (!this._isValidAnalytics(this.analyticsBase)) this.analyticsBase = this._emptyAnalytics();
 
     if (sess?.role === "admin") {
       const raw = localStorage.getItem(ADMIN_STORE_KEY);
       const draft = raw ? safeJSON.parse(raw) : null;
-      this.data = this._isValid(draft) ? draft : structuredClone(this.base);
-      // se draft inválido, começa do base
+      this.data = this._isValidApp(draft) ? structuredClone(draft) : structuredClone(this.base);
+
+      const aRaw = localStorage.getItem(ADMIN_ANALYTICS_DRAFT_KEY);
+      const aDraft = aRaw ? safeJSON.parse(aRaw) : null;
+      this.analyticsData = this._isValidAnalytics(aDraft) ? structuredClone(aDraft) : structuredClone(this.analyticsBase);
+
       this._saveAdminDraft();
     } else {
-      // artista sempre usa base do servidor
       this.data = structuredClone(this.base);
+      this.analyticsData = structuredClone(this.analyticsBase);
     }
-    return this.data;
+
+    return { app: this.data, analytics: this.analyticsData };
   },
 
-  refreshFromServerForArtists(sess) {
-    if (sess?.role !== "admin") {
-      return this.init(sess);
-    }
-    return Promise.resolve(this.data);
+  async refreshForArtists(sess) {
+    if (sess?.role === "admin") return { app: this.data, analytics: this.analyticsData };
+    return await this.init(sess);
   },
 
   _saveAdminDraft() {
     localStorage.setItem(ADMIN_STORE_KEY, safeJSON.stringify(this.data));
+    localStorage.setItem(ADMIN_ANALYTICS_DRAFT_KEY, safeJSON.stringify(this.analyticsData));
   },
 
   adminSave() {
-    if (!this._isValid(this.data)) {
-      toast("Dados inválidos. Voltando ao padrão do servidor.");
-      this.data = structuredClone(this.base || this._emptyBase());
-    }
+    if (!this._isValidApp(this.data)) this.data = structuredClone(this.base || this._emptyApp());
+    if (!this._isValidAnalytics(this.analyticsData)) this.analyticsData = structuredClone(this.analyticsBase || this._emptyAnalytics());
+
     this.data.meta.lastUpdatedISO = new Date().toISOString();
     this._saveAdminDraft();
   },
 
   adminResetToServer() {
-    this.data = structuredClone(this.base || this._emptyBase());
+    this.data = structuredClone(this.base || this._emptyApp());
+    this.analyticsData = structuredClone(this.analyticsBase || this._emptyAnalytics());
     this.adminSave();
   },
 
-  adminGeneratePublishJSON() {
-    // Gera JSON limpo para colar em data/app-data.json
+  adminGeneratePublishAppJSON() {
     const out = structuredClone(this.data);
     out.meta.lastUpdatedISO = new Date().toISOString();
-    return safeJSON.stringify(out);
+    return safeJSON.stringify(out, null, 2);
   },
 
-  adminImportDraft(jsonText) {
+  adminGeneratePublishAnalyticsJSON() {
+    const out = structuredClone(this.analyticsData);
+    return safeJSON.stringify(out, null, 2);
+  },
+
+  adminImportAnalyticsDraft(jsonText) {
     const obj = safeJSON.parse(jsonText);
-    if (!this._isValid(obj)) return { ok: false, error: "JSON inválido ou estrutura incorreta." };
-    this.data = obj;
+    if (!this._isValidAnalytics(obj)) return { ok: false, error: "JSON inválido para analytics.json." };
+    this.analyticsData = structuredClone(obj);
     this.adminSave();
     return { ok: true };
   },
@@ -208,16 +209,27 @@ const DataStore = {
     return (this.data?.artists || []).find(a => a.id === artistId) || null;
   },
 
-  _isValid(obj) {
+  getArtistAnalytics(artistId) {
+    const a = this.analyticsData?.artists?.[artistId];
+    if (!a) return { name: this.getArtistById(artistId)?.name || "Artista", analytics: [] };
+    return a;
+  },
+
+  _isValidApp(obj) {
     if (!obj || typeof obj !== "object") return false;
     if (!obj.meta || !Array.isArray(obj.users) || !Array.isArray(obj.artists)) return false;
     if (!Array.isArray(obj.projects) || !Array.isArray(obj.releasedTracks)) return false;
     if (!Array.isArray(obj.links) || !Array.isArray(obj.events) || !Array.isArray(obj.usefulInfo)) return false;
-    if (!obj.analytics || !Array.isArray(obj.analytics.series)) return false;
     return true;
   },
 
-  _emptyBase() {
+  _isValidAnalytics(obj) {
+    if (!obj || typeof obj !== "object") return false;
+    if (!obj.artists || typeof obj.artists !== "object") return false;
+    return true;
+  },
+
+  _emptyApp() {
     return {
       meta: { portalName: "Vale Produção — Portal", lastUpdatedISO: new Date().toISOString(), spotifyProfile: "https://open.spotify.com/" },
       users: [],
@@ -226,9 +238,12 @@ const DataStore = {
       projects: [],
       usefulInfo: [],
       events: [],
-      links: [],
-      analytics: { notes: "", series: [] }
+      links: []
     };
+  },
+
+  _emptyAnalytics() {
+    return { artists: {} };
   }
 };
 
@@ -286,14 +301,6 @@ function filterByArtist(sess, arr) {
   return arr.filter(x => x.artistId === sess.artistId);
 }
 
-function filterAnalytics(sess, series) {
-  if (sess.role === "admin") return series;
-  return series.filter(s =>
-    (s.scope === "global") ||
-    (s.scope === "artist" && s.artistId === sess.artistId)
-  );
-}
-
 /* ---------------- PAGES ---------------- */
 function renderDashboard(sess) {
   const d = DataStore.data;
@@ -311,12 +318,12 @@ function renderDashboard(sess) {
     <div class="panel">
       <h2 class="section-title">Bem-vindo(a), ${esc(artistName)}</h2>
       <p class="section-subtitle">
-        Atualizações chegam via GitHub/Vercel (sem nuvem paga).
+        Portal exclusivo com login individual. Atualizações chegam via GitHub/Vercel.
       </p>
       <div class="row" style="margin-top:12px;">
-        <span class="pill gold">Fonte oficial: app-data.json</span>
-        <span class="pill">PWA Instalável</span>
-        <span class="pill">Offline (shell)</span>
+        <span class="pill gold">PWA Instalável</span>
+        <span class="pill">Área exclusiva</span>
+        <span class="pill">Analytics</span>
       </div>
       <hr class="sep" />
       <p class="section-subtitle">Última atualização do portal: <b>${esc(lastUpdate)}</b></p>
@@ -333,9 +340,9 @@ function renderDashboard(sess) {
           <div class="v">${projects.length}</div>
         </div>
         <div class="kpi">
-          <div class="k">Acesso</div>
+          <div class="k">Performance</div>
           <div class="v" style="font-size:14px;color:rgba(255,255,255,.84);font-weight:760;margin-top:10px;">
-            ${esc(sess.role === "admin" ? "Admin total" : "Área do artista")}
+            <a class="link" href="#/analytics">Ver analytics</a>
           </div>
         </div>
       </div>
@@ -358,9 +365,7 @@ function renderContrato(sess) {
         <a class="btn" href="${esc(pdf)}" target="_blank" rel="noreferrer">Abrir em nova aba</a>
       </div>
       <hr class="sep" />
-      <p class="section-subtitle">
-        Arquivo: <b>${esc(pdf)}</b>
-      </p>
+      <p class="section-subtitle">Arquivo: <b>${esc(pdf)}</b></p>
     </div>
   `;
 }
@@ -384,9 +389,7 @@ function renderLancadas(sess) {
     ${pageHeader("Músicas lançadas", "Histórico do que já foi lançado, com links.")}
     <div class="panel">
       <table class="table">
-        <thead>
-          <tr><th>Título</th><th>Data</th><th>Links</th></tr>
-        </thead>
+        <thead><tr><th>Título</th><th>Data</th><th>Links</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -448,7 +451,6 @@ function renderConstrucao(sess) {
 function renderInfos() {
   const d = DataStore.data;
   if (!d.usefulInfo.length) return emptyState("Nenhuma informação útil cadastrada.");
-
   return `
     ${pageHeader("Informações úteis", "Orientações para fortalecer lançamentos e a carreira.")}
     ${d.usefulInfo.map(i => `
@@ -507,285 +509,333 @@ function renderLinks() {
   `;
 }
 
-/* ---------- Analytics ---------- */
-function getMetricKeys(sess) {
-  const series = filterAnalytics(sess, DataStore.data.analytics?.series || []);
-  const keys = new Set(series.map(s => `${s.platform}::${s.metric}`));
-  return [...keys].sort((a,b)=>a.localeCompare(b));
-}
-function getSelectedMetricKey(sess) {
-  const keys = getMetricKeys(sess);
-  const saved = localStorage.getItem(METRIC_KEY_STORAGE);
-  if (saved && keys.includes(saved)) return saved;
-  return keys[0] || "";
-}
-function setSelectedMetricKey(key) {
-  localStorage.setItem(METRIC_KEY_STORAGE, key);
-}
-function openMetricPicker(sess) {
-  const keys = getMetricKeys(sess);
-  if (!keys.length) { toast("Sem dados para selecionar."); return; }
-  const label = (k) => k.replace("::"," • ");
-  const choice = prompt(
-    "Selecione a métrica (digite o número):\n" +
-    keys.map((k,i)=>`${i+1}) ${label(k)}`).join("\n") +
-    `\n\nAtual: ${label(getSelectedMetricKey(sess))}`
-  );
-  if (!choice) return;
-  const idx = Number(choice) - 1;
-  if (Number.isNaN(idx) || idx < 0 || idx >= keys.length) { toast("Seleção inválida."); return; }
-  setSelectedMetricKey(keys[idx]);
-  toast("Métrica selecionada.");
-  navigate("analytics", sess, { silentToast: true });
+/* ---------- Analytics (JSON data/analytics.json) ---------- */
+function getArtistBlock(sess) {
+  if (sess.role === "admin") return null;
+  return DataStore.getArtistAnalytics(sess.artistId);
 }
 
-function drawChart(canvas, metricKey, sess) {
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width, h = canvas.height;
-  ctx.clearRect(0,0,w,h);
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
-  ctx.fillRect(0,0,w,h);
+function listPeriods(artistBlock) {
+  const arr = Array.isArray(artistBlock?.analytics) ? artistBlock.analytics : [];
+  const periods = arr.map(a => a.period).filter(Boolean);
+  periods.sort((a,b)=>b.localeCompare(a));
+  return periods;
+}
 
-  const seriesAll = filterAnalytics(sess, DataStore.data.analytics?.series || []);
-  const series = seriesAll
-    .filter(s => `${s.platform}::${s.metric}` === metricKey)
-    .map(s => ({...s, t: new Date(s.date).getTime()}))
-    .filter(s => !Number.isNaN(s.t))
-    .sort((a,b)=>a.t-b.t);
+function pickLatestPeriod(artistBlock) {
+  const periods = listPeriods(artistBlock);
+  return periods[0] || "";
+}
 
-  const padL = 70, padR = 24, padT = 24, padB = 52;
-  const X0 = padL, Y0 = padT, X1 = w - padR, Y1 = h - padB;
+function findPeriodData(artistBlock, period) {
+  const arr = Array.isArray(artistBlock?.analytics) ? artistBlock.analytics : [];
+  return arr.find(x => x.period === period) || null;
+}
 
-  ctx.fillStyle = "rgba(242,223,154,0.92)";
-  ctx.font = "700 22px ui-sans-serif,system-ui";
-  const title = metricKey ? metricKey.replace("::"," • ") : "Sem dados";
-  ctx.fillText(title, X0, 26);
+function pctChange(current, prev) {
+  const c = Number(current || 0);
+  const p = Number(prev || 0);
+  if (p === 0 && c === 0) return 0;
+  if (p === 0) return 100;
+  return ((c - p) / p) * 100;
+}
 
-  if (!series.length) {
-    ctx.fillStyle = "rgba(255,255,255,0.70)";
-    ctx.font = "500 16px ui-sans-serif,system-ui";
-    ctx.fillText("Sem registros para esta métrica.", X0, 64);
-    return;
-  }
-
-  const vals = series.map(s => Number(s.value)).filter(v => !Number.isNaN(v));
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
-  const span = (maxV - minV) || 1;
-
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 1;
-  for (let i=0;i<=4;i++){
-    const y = Y0 + (Y1-Y0) * (i/4);
-    ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke();
-  }
-
-  ctx.fillStyle = "rgba(255,255,255,0.70)";
-  ctx.font = "600 12px ui-sans-serif,system-ui";
-  ctx.fillText(String(maxV), 16, Y0 + 8);
-  ctx.fillText(String(minV), 16, Y1);
-
-  const xs = series.map((s,i) => X0 + (X1-X0) * (i/(series.length-1 || 1)));
-  const ys = series.map((s) => {
-    const v = Number(s.value);
-    const t = (v - minV) / span;
-    return Y1 - (Y1-Y0) * t;
-  });
-
-  ctx.strokeStyle = "rgba(215,179,90,0.92)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(xs[0], ys[0]);
-  for (let i=1;i<xs.length;i++) ctx.lineTo(xs[i], ys[i]);
-  ctx.stroke();
-
-  ctx.fillStyle = "rgba(242,223,154,0.95)";
-  for (let i=0;i<xs.length;i++){
-    ctx.beginPath();
-    ctx.arc(xs[i], ys[i], 4.2, 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  const first = series[0], last = series[series.length-1];
-  ctx.fillStyle = "rgba(255,255,255,0.70)";
-  ctx.font = "600 12px ui-sans-serif,system-ui";
-  ctx.fillText(formatDateBR(first.date), X0, h - 18);
-  const lastLabel = formatDateBR(last.date);
-  const measure = ctx.measureText(lastLabel).width;
-  ctx.fillText(lastLabel, X1 - measure, h - 18);
+function fmtNum(n) {
+  const v = Number(n || 0);
+  return v.toLocaleString("pt-BR");
 }
 
 function renderAnalytics(sess) {
-  const series = filterAnalytics(sess, DataStore.data.analytics?.series || []);
-  const notes = DataStore.data.analytics?.notes || "";
-
-  const latestBy = {};
-  for (const s of series) {
-    const key = `${s.platform}::${s.metric}`;
-    const t = new Date(s.date).getTime();
-    if (!latestBy[key] || t > latestBy[key].t) latestBy[key] = { ...s, t };
+  if (sess.role === "admin") {
+    return `
+      ${pageHeader("Analytics", "Admin: edite e gere o JSON para publicar no GitHub (data/analytics.json).")}
+      ${renderAdminAnalyticsBlock()}
+    `;
   }
-  const latest = Object.values(latestBy);
 
-  const rows = series.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s => `
-    <tr>
-      <td><b>${esc(s.platform)}</b><div class="item-meta">${esc(s.metric)}</div></td>
-      <td>${esc(s.value)}</td>
-      <td>${esc(formatDateBR(s.date))}</td>
-    </tr>
-  `).join("");
+  const artistBlock = getArtistBlock(sess);
+  const periods = listPeriods(artistBlock);
+  if (!periods.length) return emptyState("Ainda não há analytics cadastrados para este artista.");
 
-  const kpis = latest.slice(0, 6).map(x => `
-    <div class="kpi">
-      <div class="k">${esc(x.platform)} • ${esc(x.metric)}</div>
-      <div class="v">${esc(x.value)}</div>
-    </div>
-  `).join("");
+  const selected = localStorage.getItem("vp.analytics.period.sel") || pickLatestPeriod(artistBlock);
+  const current = findPeriodData(artistBlock, selected) || findPeriodData(artistBlock, periods[0]);
+  const prevPeriod = periods[1] || null;
+  const prev = prevPeriod ? findPeriodData(artistBlock, prevPeriod) : null;
+
+  const streams = current?.music?.streams ?? 0;
+  const downloads = current?.music?.downloads ?? 0;
+
+  const prevStreams = prev?.music?.streams ?? 0;
+  const prevDownloads = prev?.music?.downloads ?? 0;
+
+  const streamsDelta = prev ? pctChange(streams, prevStreams) : null;
+  const downloadsDelta = prev ? pctChange(downloads, prevDownloads) : null;
+
+  const igF = current?.social?.instagram?.followers ?? 0;
+  const igE = current?.social?.instagram?.engagement ?? 0;
+  const fbF = current?.social?.facebook?.followers ?? 0;
+  const fbE = current?.social?.facebook?.engagement ?? 0;
+  const ytS = current?.social?.youtube?.subscribers ?? 0;
+  const ytV = current?.social?.youtube?.views ?? 0;
+
+  const topCountries = Array.isArray(current?.countries) ? current.countries.slice(0,3) : [];
+  while (topCountries.length < 3) topCountries.push({ country: "—", plays: 0 });
+
+  const topTrack = current?.music?.top_track || "—";
 
   return `
-    ${pageHeader("Analytics", "Atualiza via GitHub (dados oficiais no app-data.json).")}
+    ${pageHeader("Analytics", "Entenda sua evolução (streams, downloads, países, seguidores e engajamento).")}
+
     <div class="panel">
+      <div class="row">
+        <button class="btn btn-ghost" id="periodPickerBtn" type="button">Período: <b>${esc(selected)}</b></button>
+        ${prevPeriod ? `<span class="pill">Comparando com: <b>${esc(prevPeriod)}</b></span>` : `<span class="pill">Sem período anterior</span>`}
+      </div>
+
+      <hr class="sep" />
+
       <div class="grid">
-        <div class="col-8">
-          <div class="canvas-wrap">
-            <canvas id="chartCanvas" width="1200" height="320"></canvas>
+        <div class="col-12">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="k">Streams</div>
+              <div class="v">${fmtNum(streams)}</div>
+              <div class="item-meta" style="margin-top:8px;">
+                ${prev ? `Evolução: <b>${streamsDelta >= 0 ? "+" : ""}${streamsDelta.toFixed(1)}%</b>` : `Evolução: <b>—</b>`}
+              </div>
+            </div>
+
+            <div class="kpi">
+              <div class="k">Downloads</div>
+              <div class="v">${fmtNum(downloads)}</div>
+              <div class="item-meta" style="margin-top:8px;">
+                ${prev ? `Evolução: <b>${downloadsDelta >= 0 ? "+" : ""}${downloadsDelta.toFixed(1)}%</b>` : `Evolução: <b>—</b>`}
+              </div>
+            </div>
+
+            <div class="kpi">
+              <div class="k">Música destaque</div>
+              <div class="v" style="font-size:16px;line-height:1.2;">${esc(topTrack)}</div>
+              <div class="item-meta" style="margin-top:8px;">
+                Período: <b>${esc(selected)}</b>
+              </div>
+            </div>
           </div>
-          <p class="section-subtitle" style="margin-top:10px;">Use “Selecionar métrica” para alternar o gráfico.</p>
         </div>
-        <div class="col-4">
-          <div class="kpis" style="grid-template-columns: 1fr;">
-            ${kpis || `<div class="kpi"><div class="k">Sem dados</div><div class="v">—</div></div>`}
+
+        <div class="col-6">
+          <div class="panel" style="padding:16px;">
+            <div class="item-top">
+              <div>
+                <div class="section-title" style="font-size:16px;">Top 3 países (plays)</div>
+                <div class="section-subtitle">Ranking do período selecionado</div>
+              </div>
+              <span class="pill gold">${esc(selected)}</span>
+            </div>
+            <hr class="sep" />
+            <div class="list">
+              ${topCountries.map((c, idx) => `
+                <div class="item">
+                  <div class="item-top">
+                    <div>
+                      <div class="item-title">${idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"} ${esc(c.country)}</div>
+                      <div class="item-meta">${fmtNum(c.plays)} plays</div>
+                    </div>
+                    <span class="pill gold">Top ${idx+1}</span>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
           </div>
-          <hr class="sep" />
-          <div class="row">
-            ${sess.role === "admin" ? `<a class="btn btn-gold" href="#/admin">Editar (Admin)</a>` : ``}
-            <button class="btn btn-ghost" type="button" id="chartSelectBtn">Selecionar métrica</button>
+        </div>
+
+        <div class="col-6">
+          <div class="panel" style="padding:16px;">
+            <div class="section-title" style="font-size:16px;">Redes sociais</div>
+            <p class="section-subtitle">Seguidores, inscritos, views e engajamento</p>
+            <hr class="sep" />
+
+            <div class="list">
+              <div class="item">
+                <div class="item-top">
+                  <div>
+                    <div class="item-title">Instagram</div>
+                    <div class="item-meta">Seguidores: <b>${fmtNum(igF)}</b> • Engajamento: <b>${Number(igE).toFixed(1)}%</b></div>
+                  </div>
+                  <span class="pill gold">IG</span>
+                </div>
+              </div>
+
+              <div class="item">
+                <div class="item-top">
+                  <div>
+                    <div class="item-title">Facebook</div>
+                    <div class="item-meta">Seguidores: <b>${fmtNum(fbF)}</b> • Engajamento: <b>${Number(fbE).toFixed(1)}%</b></div>
+                  </div>
+                  <span class="pill gold">FB</span>
+                </div>
+              </div>
+
+              <div class="item">
+                <div class="item-top">
+                  <div>
+                    <div class="item-title">YouTube</div>
+                    <div class="item-meta">Inscritos: <b>${fmtNum(ytS)}</b> • Views: <b>${fmtNum(ytV)}</b></div>
+                  </div>
+                  <span class="pill gold">YT</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="section-subtitle" style="margin-top:12px;">
+              Dica: streams mostram alcance; engajamento mostra conexão real.
+            </p>
           </div>
-          ${notes ? `<p class="section-subtitle" style="margin-top:10px;">${esc(notes)}</p>` : ""}
         </div>
       </div>
     </div>
+  `;
+}
 
+function renderAdminAnalyticsBlock() {
+  const analytics = DataStore.analyticsData || { artists: {} };
+  const artists = DataStore.data?.artists || [];
+  const options = artists.map(a => `<option value="${esc(a.id)}">${esc(a.name)} (${esc(a.id)})</option>`).join("");
+
+  return `
     <div class="panel">
-      <h3 class="section-title" style="font-size:16px;">Histórico</h3>
-      <p class="section-subtitle">Últimos registros.</p>
+      <h3 class="section-title" style="font-size:16px;">Editar Analytics (rascunho do Admin)</h3>
+      <p class="section-subtitle">Preencha e clique em “Salvar no rascunho”. Depois gere o JSON e cole no GitHub em <b>data/analytics.json</b>.</p>
       <hr class="sep" />
-      ${series.length ? `
-        <table class="table">
-          <thead><tr><th>Plataforma / Métrica</th><th>Valor</th><th>Data</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      ` : `<div class="item-meta">Sem registros.</div>`}
+
+      <div class="grid">
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="adArtistId">Artista</label>
+            <select class="input" id="adArtistId">${options}</select>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="adPeriod">Período (AAAA-MM)</label>
+            <input class="input" id="adPeriod" placeholder="2026-01" />
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="adStreams">Streams</label>
+            <input class="input" id="adStreams" type="number" step="1" />
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="adDownloads">Downloads</label>
+            <input class="input" id="adDownloads" type="number" step="1" />
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="form-row">
+            <label class="label" for="adTopTrack">Música destaque</label>
+            <input class="input" id="adTopTrack" placeholder="Nome da música" />
+          </div>
+        </div>
+
+        <div class="col-12">
+          <h3 class="section-title" style="font-size:16px;margin:6px 0 0;">Top 3 países (plays)</h3>
+          <p class="section-subtitle">Preencha país e plays.</p>
+        </div>
+
+        <div class="col-4"><input class="input" id="c1" placeholder="País 1" /></div>
+        <div class="col-4"><input class="input" id="c2" placeholder="País 2" /></div>
+        <div class="col-4"><input class="input" id="c3" placeholder="País 3" /></div>
+
+        <div class="col-4"><input class="input" id="p1" type="number" step="1" placeholder="Plays 1" /></div>
+        <div class="col-4"><input class="input" id="p2" type="number" step="1" placeholder="Plays 2" /></div>
+        <div class="col-4"><input class="input" id="p3" type="number" step="1" placeholder="Plays 3" /></div>
+
+        <div class="col-12">
+          <h3 class="section-title" style="font-size:16px;margin:6px 0 0;">Redes sociais</h3>
+        </div>
+
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="igF">Instagram seguidores</label>
+            <input class="input" id="igF" type="number" step="1" />
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="igE">Instagram engajamento (%)</label>
+            <input class="input" id="igE" type="number" step="0.1" />
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="fbF">Facebook seguidores</label>
+            <input class="input" id="fbF" type="number" step="1" />
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="fbE">Facebook engajamento (%)</label>
+            <input class="input" id="fbE" type="number" step="0.1" />
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="ytS">YouTube inscritos</label>
+            <input class="input" id="ytS" type="number" step="1" />
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="ytV">YouTube views</label>
+            <input class="input" id="ytV" type="number" step="1" />
+          </div>
+        </div>
+
+        <div class="col-12">
+          <button class="btn btn-gold" id="saveAnalyticsDraftBtn" type="button">Salvar no rascunho</button>
+          <button class="btn btn-ghost" id="genAnalyticsJsonBtn" type="button">Gerar JSON (data/analytics.json)</button>
+          <button class="btn btn-ghost" id="resetAdminBtn" type="button">Descartar rascunho (voltar ao publicado)</button>
+        </div>
+
+        <div class="col-12">
+          <label class="label" for="analyticsJsonBox">JSON pronto para colar no GitHub</label>
+          <textarea class="input" id="analyticsJsonBox" placeholder="Clique em Gerar JSON..."></textarea>
+        </div>
+
+        <div class="col-12">
+          <label class="label" for="importAnalyticsBox">Importar JSON (rascunho)</label>
+          <textarea class="input" id="importAnalyticsBox" placeholder="Cole um analytics.json aqui..."></textarea>
+          <div class="row" style="margin-top:10px;">
+            <button class="btn btn-gold" id="importAnalyticsBtn" type="button">Importar</button>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
 
 function renderAdmin(sess) {
-  const d = DataStore.data;
-  const artistOptions = (d.artists || [])
-    .map(a => `<option value="${esc(a.id)}">${esc(a.name)} (${esc(a.id)})</option>`)
-    .join("");
-
   return `
-    ${pageHeader("Admin", "Edite aqui e depois publique no GitHub (sem nuvem paga).")}
-
+    ${pageHeader("Admin", "Use o menu Analytics para editar e publicar o arquivo data/analytics.json.")}
     <div class="panel">
-      <h3 class="section-title" style="font-size:16px;">Inserir Analytics</h3>
-      <p class="section-subtitle">Escolha escopo: Global ou por artista.</p>
-      <hr class="sep" />
-
-      <div class="grid">
-        <div class="col-6">
-          <div class="form-row">
-            <label class="label" for="aScope">Escopo</label>
-            <select class="input" id="aScope">
-              <option value="artist">Artista</option>
-              <option value="global">Global</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="col-6">
-          <div class="form-row">
-            <label class="label" for="aArtist">Artista (se escopo=Artista)</label>
-            <select class="input" id="aArtist">${artistOptions}</select>
-          </div>
-        </div>
-
-        <div class="col-6">
-          <div class="form-row">
-            <label class="label" for="aPlatform">Plataforma</label>
-            <input class="input" id="aPlatform" placeholder="Spotify / Instagram / YouTube..." />
-          </div>
-        </div>
-
-        <div class="col-6">
-          <div class="form-row">
-            <label class="label" for="aMetric">Métrica</label>
-            <input class="input" id="aMetric" placeholder="Ouvintes mensais / Seguidores / Views..." />
-          </div>
-        </div>
-
-        <div class="col-6">
-          <div class="form-row">
-            <label class="label" for="aValue">Valor</label>
-            <input class="input" id="aValue" type="number" placeholder="ex: 1200" />
-          </div>
-        </div>
-
-        <div class="col-6">
-          <div class="form-row">
-            <label class="label" for="aDate">Data</label>
-            <input class="input" id="aDate" type="date" />
-          </div>
-        </div>
-
-        <div class="col-12">
-          <button class="btn btn-gold" id="addAnalyticsBtn" type="button">Adicionar registro</button>
-          <button class="btn btn-ghost" id="clearAnalyticsBtn" type="button">Limpar analytics (cuidado)</button>
-        </div>
-      </div>
-
-      <hr class="sep" />
-      <h3 class="section-title" style="font-size:16px;">Notas do Analytics</h3>
-      <textarea class="input" id="aNotes" placeholder="Observações internas...">${esc(d.analytics?.notes || "")}</textarea>
-      <div class="row" style="margin-top:10px;">
-        <button class="btn btn-ghost" id="saveNotesBtn" type="button">Salvar notas</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h3 class="section-title" style="font-size:16px;">Publicar no GitHub (Atualização para todos)</h3>
       <p class="section-subtitle">
-        Clique em “Gerar JSON”, copie e cole no arquivo <b>data/app-data.json</b> do GitHub e faça commit.
-        Assim, a atualização chega para todos.
+        Vá em <b>Analytics</b> no menu e use a área de Admin para gerar o JSON.
       </p>
-      <hr class="sep" />
-      <div class="row">
-        <button class="btn btn-gold" id="genPublishBtn" type="button">Gerar JSON para GitHub</button>
-        <button class="btn btn-ghost" id="resetFromServerBtn" type="button">Descartar rascunho (voltar ao servidor)</button>
-      </div>
-      <hr class="sep" />
-      <label class="label" for="publishBox">JSON para colar no GitHub</label>
-      <textarea class="input" id="publishBox" placeholder="Clique em Gerar JSON..."></textarea>
-    </div>
-
-    <div class="panel">
-      <h3 class="section-title" style="font-size:16px;">Importar rascunho (Admin)</h3>
-      <p class="section-subtitle">Se você tiver um JSON salvo, pode importar aqui (só para o admin).</p>
-      <hr class="sep" />
-      <label class="label" for="importBox">Importar JSON</label>
-      <textarea class="input" id="importBox" placeholder="Cole JSON..."></textarea>
-      <div class="row" style="margin-top:10px;">
-        <button class="btn btn-gold" id="importBtn" type="button">Importar</button>
-      </div>
     </div>
   `;
 }
 
 /* ---------------- Events wiring ---------------- */
 function bindPageEvents(sess, routeKey) {
-  // checklist
   UI.page.querySelectorAll('input[type="checkbox"][data-proj][data-check]').forEach(cb => {
     cb.addEventListener("change", () => {
       const projId = cb.getAttribute("data-proj");
@@ -817,78 +867,95 @@ function bindPageEvents(sess, routeKey) {
     });
   });
 
-  // analytics metric picker
-  const chartSelectBtn = $("#chartSelectBtn", UI.page);
-  if (chartSelectBtn) chartSelectBtn.addEventListener("click", () => openMetricPicker(sess));
-
-  if (routeKey === "analytics") {
-    setTimeout(() => {
-      const c = $("#chartCanvas", UI.page);
-      if (c) drawChart(c, getSelectedMetricKey(sess), sess);
-    }, 0);
+  if (routeKey === "analytics" && sess.role !== "admin") {
+    $("#periodPickerBtn", UI.page)?.addEventListener("click", () => {
+      const artistBlock = DataStore.getArtistAnalytics(sess.artistId);
+      const periods = listPeriods(artistBlock);
+      const choice = prompt(
+        "Escolha o período (digite o número):\n" +
+        periods.map((p,i)=>`${i+1}) ${p}`).join("\n")
+      );
+      if (!choice) return;
+      const idx = Number(choice) - 1;
+      if (Number.isNaN(idx) || idx < 0 || idx >= periods.length) { toast("Seleção inválida."); return; }
+      localStorage.setItem("vp.analytics.period.sel", periods[idx]);
+      navigate("analytics", sess, { silentToast: true });
+    });
   }
 
-  // admin actions
-  if (routeKey === "admin") {
-    $("#addAnalyticsBtn", UI.page)?.addEventListener("click", () => {
-      const scope = ($("#aScope", UI.page).value || "artist").trim();
-      const artistId = ($("#aArtist", UI.page).value || "").trim();
-      const platform = ($("#aPlatform", UI.page).value || "").trim();
-      const metric = ($("#aMetric", UI.page).value || "").trim();
-      const valueRaw = ($("#aValue", UI.page).value || "").trim();
-      const date = ($("#aDate", UI.page).value || "").trim();
-      const value = Number(valueRaw);
+  if (routeKey === "analytics" && sess.role === "admin") {
+    $("#saveAnalyticsDraftBtn", UI.page)?.addEventListener("click", () => {
+      const artistId = ($("#adArtistId", UI.page).value || "").trim();
+      const period = ($("#adPeriod", UI.page).value || "").trim();
+      if (!artistId || !period) { toast("Preencha Artista e Período."); return; }
 
-      if (!platform || !metric || !date || Number.isNaN(value)) { toast("Preencha plataforma, métrica, valor e data."); return; }
-      if (scope === "artist" && !artistId) { toast("Selecione o artista."); return; }
+      const streams = Number(($("#adStreams", UI.page).value || "0").trim());
+      const downloads = Number(($("#adDownloads", UI.page).value || "0").trim());
+      const top_track = ($("#adTopTrack", UI.page).value || "").trim();
 
-      const entry = { scope, platform, metric, value, date };
-      if (scope === "artist") entry.artistId = artistId;
+      const c1 = ($("#c1", UI.page).value || "").trim();
+      const c2 = ($("#c2", UI.page).value || "").trim();
+      const c3 = ($("#c3", UI.page).value || "").trim();
+      const p1 = Number(($("#p1", UI.page).value || "0").trim());
+      const p2 = Number(($("#p2", UI.page).value || "0").trim());
+      const p3 = Number(($("#p3", UI.page).value || "0").trim());
 
-      DataStore.data.analytics.series.push(entry);
+      const igF = Number(($("#igF", UI.page).value || "0").trim());
+      const igE = Number(($("#igE", UI.page).value || "0").trim());
+      const fbF = Number(($("#fbF", UI.page).value || "0").trim());
+      const fbE = Number(($("#fbE", UI.page).value || "0").trim());
+      const ytS = Number(($("#ytS", UI.page).value || "0").trim());
+      const ytV = Number(($("#ytV", UI.page).value || "0").trim());
+
+      const block = DataStore.analyticsData.artists[artistId] || { name: DataStore.getArtistById(artistId)?.name || artistId, analytics: [] };
+      if (!Array.isArray(block.analytics)) block.analytics = [];
+
+      const entry = {
+        period,
+        music: { streams: Number.isNaN(streams) ? 0 : streams, downloads: Number.isNaN(downloads) ? 0 : downloads, top_track },
+        countries: [
+          { country: c1 || "—", plays: Number.isNaN(p1) ? 0 : p1 },
+          { country: c2 || "—", plays: Number.isNaN(p2) ? 0 : p2 },
+          { country: c3 || "—", plays: Number.isNaN(p3) ? 0 : p3 }
+        ],
+        social: {
+          instagram: { followers: Number.isNaN(igF) ? 0 : igF, engagement: Number.isNaN(igE) ? 0 : igE },
+          facebook: { followers: Number.isNaN(fbF) ? 0 : fbF, engagement: Number.isNaN(fbE) ? 0 : fbE },
+          youtube: { subscribers: Number.isNaN(ytS) ? 0 : ytS, views: Number.isNaN(ytV) ? 0 : ytV }
+        }
+      };
+
+      const i = block.analytics.findIndex(x => x.period === period);
+      if (i >= 0) block.analytics[i] = entry;
+      else block.analytics.push(entry);
+
+      DataStore.analyticsData.artists[artistId] = block;
       DataStore.adminSave();
-      toast("Registro adicionado (rascunho do admin).");
-      location.hash = "#/analytics";
+      toast("Salvo no rascunho do admin.");
     });
 
-    $("#clearAnalyticsBtn", UI.page)?.addEventListener("click", () => {
-      const ok = confirm("Tem certeza? Isso apaga todos os registros de analytics (rascunho do admin).");
+    $("#genAnalyticsJsonBtn", UI.page)?.addEventListener("click", () => {
+      const out = DataStore.adminGeneratePublishAnalyticsJSON();
+      $("#analyticsJsonBox", UI.page).value = out;
+      toast("JSON gerado. Cole no GitHub: data/analytics.json");
+    });
+
+    $("#resetAdminBtn", UI.page)?.addEventListener("click", async () => {
+      const ok = confirm("Descartar rascunho local e voltar ao publicado?");
       if (!ok) return;
-      DataStore.data.analytics.series = [];
-      DataStore.adminSave();
-      toast("Analytics limpo.");
-      location.hash = "#/analytics";
-    });
-
-    $("#saveNotesBtn", UI.page)?.addEventListener("click", () => {
-      const notes = ($("#aNotes", UI.page).value || "").trim();
-      DataStore.data.analytics.notes = notes;
-      DataStore.adminSave();
-      toast("Notas salvas.");
-    });
-
-    $("#genPublishBtn", UI.page)?.addEventListener("click", () => {
-      const out = DataStore.adminGeneratePublishJSON();
-      $("#publishBox", UI.page).value = out;
-      toast("JSON gerado. Copie e cole no GitHub.");
-    });
-
-    $("#resetFromServerBtn", UI.page)?.addEventListener("click", async () => {
-      const ok = confirm("Descartar rascunho local e voltar ao que está publicado no servidor?");
-      if (!ok) return;
-      await DataStore.init(sess); // recarrega base e reseta draft
+      await DataStore.init(sess);
       DataStore.adminResetToServer();
       toast("Rascunho descartado.");
-      navigate("admin", sess, { silentToast: true });
+      navigate("analytics", sess, { silentToast: true });
     });
 
-    $("#importBtn", UI.page)?.addEventListener("click", () => {
-      const txt = ($("#importBox", UI.page).value || "").trim();
+    $("#importAnalyticsBtn", UI.page)?.addEventListener("click", () => {
+      const txt = ($("#importAnalyticsBox", UI.page).value || "").trim();
       if (!txt) { toast("Cole o JSON."); return; }
-      const res = DataStore.adminImportDraft(txt);
+      const res = DataStore.adminImportAnalyticsDraft(txt);
       if (!res.ok) { toast(res.error || "Falha ao importar."); return; }
       toast("Importado no rascunho do admin.");
-      navigate("admin", sess, { silentToast: true });
+      navigate("analytics", sess, { silentToast: true });
     });
   }
 }
@@ -906,8 +973,7 @@ async function onRouteChange() {
   const sess = requireAuth();
   if (!sess) return;
 
-  // Artistas sempre tentam atualizar dados do servidor ao navegar
-  await DataStore.refreshFromServerForArtists(sess);
+  await DataStore.refreshForArtists(sess);
 
   const routeKey = currentRoute();
   const guarded = guardRoute(sess, routeKey);
@@ -943,7 +1009,6 @@ async function boot() {
     try { await navigator.serviceWorker.register("./service-worker.js"); } catch {}
   }
 
-  // Precisa do base para autenticar (users vêm do JSON)
   await DataStore.init(null);
 
   $("#loginForm").addEventListener("submit", async (e) => {
@@ -951,7 +1016,6 @@ async function boot() {
     const username = ($("#loginUser").value || "").trim();
     const password = ($("#loginPass").value || "").trim();
 
-    // Recarrega base antes de logar (pega usuários atualizados do Git)
     await DataStore.init(null);
 
     const user = DataStore.findUser(username, password);
@@ -966,8 +1030,6 @@ async function boot() {
     };
 
     Auth.set(session);
-
-    // Inicializa dados conforme role
     await DataStore.init(session);
 
     toast("Bem-vindo(a).");
