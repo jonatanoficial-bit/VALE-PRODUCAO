@@ -1,5 +1,4 @@
-/* Vale Produção — PWA Service Worker (cache-first com fallback) */
-const CACHE_VERSION = "v1.0.0";
+const CACHE_VERSION = "v1.1.0";
 const CACHE_NAME = `vale-portal-${CACHE_VERSION}`;
 
 const ASSETS = [
@@ -11,8 +10,7 @@ const ASSETS = [
   "./data/app-data.json",
   "./assets/logo.png",
   "./assets/icon-192.png",
-  "./assets/icon-512.png",
-  "./assets/contrato-assinado.pdf"
+  "./assets/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -31,8 +29,6 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-
-  // Só GET
   if (req.method !== "GET") return;
 
   event.respondWith(
@@ -41,7 +37,6 @@ self.addEventListener("fetch", (event) => {
 
       return fetch(req)
         .then((res) => {
-          // Cachear recursos do mesmo origin
           const url = new URL(req.url);
           if (url.origin === location.origin) {
             const clone = res.clone();
@@ -50,12 +45,9 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() => {
-          // Fallback simples: se for navegação, retorna index
           const accept = req.headers.get("accept") || "";
-          if (accept.includes("text/html")) {
-            return caches.match("./index.html");
-          }
-          return cached || new Response("Offline", { status: 503, statusText: "Offline" });
+          if (accept.includes("text/html")) return caches.match("./index.html");
+          return new Response("Offline", { status: 503, statusText: "Offline" });
         });
     })
   );
