@@ -1,9 +1,3 @@
-/* Vale Produção — Portal (HTML/CSS/JS) | PWA + SPA hash-router
-   - Login local (admin/artista)
-   - DataStore: localStorage com fallback em data/app-data.json
-   - Admin: inserir analytics + export/import JSON
-*/
-
 const $ = (sel, el = document) => el.querySelector(sel);
 
 const UI = {
@@ -22,13 +16,9 @@ const UI = {
   adminNav: $("#adminNav")
 };
 
-const AUTH_KEY = "vp.auth.session.v1";
-const STORE_KEY = "vp.portal.data.v1";
-
-const CREDENTIALS = [
-  { username: "admin", password: "1234", role: "admin", display: "Admin • Vale Produção" },
-  { username: "artista", password: "1234", role: "artist", display: "Artista • Cliente" }
-];
+const AUTH_KEY = "vp.auth.session.v2";
+const STORE_KEY = "vp.portal.data.v2";
+const METRIC_KEY_STORAGE = "vp.analytics.selectedMetric.v2";
 
 const ROUTES = {
   dashboard: { title: "Dashboard", render: renderDashboard },
@@ -64,13 +54,6 @@ const Auth = {
   },
   clear() {
     localStorage.removeItem(AUTH_KEY);
-  },
-  login(username, password) {
-    const u = CREDENTIALS.find(x => x.username === username && x.password === password);
-    if (!u) return null;
-    const session = { username: u.username, role: u.role, display: u.display, ts: Date.now() };
-    this.set(session);
-    return session;
   }
 };
 
@@ -79,22 +62,20 @@ const DataStore = {
   data: null,
 
   async init() {
-    // 1) tenta localStorage
     const raw = localStorage.getItem(STORE_KEY);
     const local = raw ? safeJSON.parse(raw) : null;
 
-    // 2) carrega base JSON (sempre, para fallback e merge)
-    const base = await fetch("./data/app-data.json", { cache: "no-store" }).then(r => r.json()).catch(() => null);
+    const base = await fetch("./data/app-data.json", { cache: "no-store" })
+      .then(r => r.json())
+      .catch(() => null);
+
     this.base = base || this._emptyBase();
 
-    // 3) escolhe data
-    if (this._isValid(local)) {
-      this.data = local;
-    } else {
+    if (this._isValid(local)) this.data = local;
+    else {
       this.data = structuredClone(this.base);
-      this.save(); // garante inicialização
+      this.save();
     }
-
     return this.data;
   },
 
@@ -124,23 +105,28 @@ const DataStore = {
     return { ok: true };
   },
 
+  findUser(username, password) {
+    const users = this.data?.users || [];
+    return users.find(u => u.username === username && u.password === password) || null;
+  },
+
+  getArtistById(artistId) {
+    return (this.data?.artists || []).find(a => a.id === artistId) || null;
+  },
+
   _isValid(obj) {
     if (!obj || typeof obj !== "object") return false;
-    if (!obj.meta || !obj.analytics || !Array.isArray(obj.projects)) return false;
-    if (!obj.analytics.series || !Array.isArray(obj.analytics.series)) return false;
-    if (!Array.isArray(obj.links) || !Array.isArray(obj.events)) return false;
-    if (!Array.isArray(obj.releasedTracks) || !Array.isArray(obj.usefulInfo)) return false;
+    if (!obj.meta || !Array.isArray(obj.users) || !Array.isArray(obj.artists)) return false;
+    if (!Array.isArray(obj.projects) || !Array.isArray(obj.releasedTracks)) return false;
+    if (!Array.isArray(obj.links) || !Array.isArray(obj.events) || !Array.isArray(obj.usefulInfo)) return false;
+    if (!obj.analytics || !Array.isArray(obj.analytics.series)) return false;
     return true;
   },
 
   _emptyBase() {
     return {
-      meta: {
-        portalName: "Vale Produção — Portal",
-        contractPdfPath: "./assets/contrato-assinado.pdf",
-        spotifyProfile: "https://open.spotify.com/",
-        lastUpdatedISO: new Date().toISOString()
-      },
+      meta: { portalName: "Vale Produção — Portal", lastUpdatedISO: new Date().toISOString(), spotifyProfile: "https://open.spotify.com/" },
+      users: [],
       artists: [],
       releasedTracks: [],
       projects: [],
@@ -152,6 +138,45 @@ const DataStore = {
   }
 };
 
+function esc(s) {
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function formatDateBR(isoOrDate) {
+  if (!isoOrDate) return "—";
+  const d = new Date(isoOrDate);
+  if (Number.isNaN(d.getTime())) return String(isoOrDate);
+  return d.toLocaleDateString("pt-BR", { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+
+function pageHeader(title, subtitle) {
+  return `
+    <div class="panel">
+      <h2 class="section-title">${esc(title)}</h2>
+      ${subtitle ? `<p class="section-subtitle">${esc(subtitle)}</p>` : ``}
+    </div>
+  `;
+}
+
+function emptyState(msg) {
+  return `
+    <div class="panel">
+      <p class="section-subtitle">${esc(msg)}</p>
+    </div>
+  `;
+}
+
+function currentRoute() {
+  const hash = location.hash || "#/dashboard";
+  const parts = hash.replace("#/", "").split("/");
+  return parts[0] || "dashboard";
+}
+
 function setActiveNav(routeKey) {
   document.querySelectorAll(".nav-item").forEach(a => {
     a.classList.toggle("active", a.dataset.route === routeKey);
@@ -161,12 +186,6 @@ function setActiveNav(routeKey) {
 function openSidebar(open) {
   if (open) UI.sidebar.classList.add("open");
   else UI.sidebar.classList.remove("open");
-}
-
-function currentRoute() {
-  const hash = location.hash || "#/dashboard";
-  const parts = hash.replace("#/", "").split("/");
-  return parts[0] || "dashboard";
 }
 
 function requireAuth() {
@@ -199,46 +218,34 @@ function guardRoute(sess, routeKey) {
   return { ok: true, route: routeKey };
 }
 
-function formatDateBR(isoOrDate) {
-  if (!isoOrDate) return "—";
-  const d = new Date(isoOrDate);
-  if (Number.isNaN(d.getTime())) return String(isoOrDate);
-  return d.toLocaleDateString("pt-BR", { year: "numeric", month: "2-digit", day: "2-digit" });
+/* --------- FILTROS POR ARTISTA --------- */
+function filterByArtist(sess, arr) {
+  if (sess.role === "admin") return arr;
+  return arr.filter(x => x.artistId === sess.artistId);
 }
 
-function esc(s) {
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
-/* ---------- Render helpers ---------- */
-function pageHeader(title, subtitle) {
-  return `
-    <div class="panel">
-      <h2 class="section-title">${esc(title)}</h2>
-      ${subtitle ? `<p class="section-subtitle">${esc(subtitle)}</p>` : ``}
-    </div>
-  `;
-}
-
-function emptyState(msg) {
-  return `
-    <div class="panel">
-      <p class="section-subtitle">${esc(msg)}</p>
-    </div>
-  `;
+function filterAnalytics(sess, series) {
+  if (sess.role === "admin") return series;
+  // Artista vê:
+  // - dados global (scope=global)
+  // - dados dele (scope=artist e artistId)
+  return series.filter(s =>
+    (s.scope === "global") ||
+    (s.scope === "artist" && s.artistId === sess.artistId)
+  );
 }
 
 /* ---------- Pages ---------- */
 function renderDashboard(sess) {
   const d = DataStore.data;
 
-  const totalReleased = d.releasedTracks.length;
-  const totalProjects = d.projects.length;
+  const released = filterByArtist(sess, d.releasedTracks);
+  const projects = filterByArtist(sess, d.projects);
+
+  const artistName = sess.role === "admin"
+    ? "Equipe Vale Produção"
+    : (DataStore.getArtistById(sess.artistId)?.name || sess.display);
+
   const lastUpdate = d.meta.lastUpdatedISO ? new Date(d.meta.lastUpdatedISO).toLocaleString("pt-BR") : "—";
 
   const nextEvent = [...d.events]
@@ -246,39 +253,22 @@ function renderDashboard(sess) {
     .filter(e => !Number.isNaN(e._t))
     .sort((a,b)=>a._t-b._t)[0];
 
-  const kpis = `
-    <div class="kpis">
-      <div class="kpi">
-        <div class="k">Músicas lançadas</div>
-        <div class="v">${totalReleased}</div>
-      </div>
-      <div class="kpi">
-        <div class="k">Projetos em construção</div>
-        <div class="v">${totalProjects}</div>
-      </div>
-      <div class="kpi">
-        <div class="k">Última atualização</div>
-        <div class="v" style="font-size:14px;color:rgba(255,255,255,.84);font-weight:760;margin-top:10px;">${esc(lastUpdate)}</div>
-      </div>
-    </div>
-  `;
-
-  const hero = `
+  return `
     <div class="panel">
       <div class="grid">
         <div class="col-8">
-          <h2 class="section-title">Bem-vindo(a), ${esc(sess.role === "admin" ? "Equipe Vale Produção" : "Artista")}</h2>
+          <h2 class="section-title">Bem-vindo(a), ${esc(artistName)}</h2>
           <p class="section-subtitle">
-            Aqui você acompanha contrato, lançamentos, checklist do processo e desempenho (analytics).
+            Acompanhe contrato, lançamentos, checklist do processo e desempenho (analytics).
           </p>
           <div class="row" style="margin-top:12px;">
-            <span class="pill gold">PWA Instalável</span>
+            <span class="pill gold">Login individual</span>
+            <span class="pill">PWA Instalável</span>
             <span class="pill">Offline após 1º acesso</span>
-            <span class="pill">Dourado/Preto Premium</span>
           </div>
           <hr class="sep" />
           <p class="section-subtitle">
-            Dica: use <b>Admin → Exportar JSON</b> para backup dos dados que você alimenta.
+            Última atualização: <b>${esc(lastUpdate)}</b>
           </p>
         </div>
         <div class="col-4">
@@ -303,20 +293,41 @@ function renderDashboard(sess) {
         </div>
       </div>
     </div>
-  `;
 
-  return `
-    ${hero}
-    <div class="panel">${kpis}</div>
+    <div class="panel">
+      <div class="kpis">
+        <div class="kpi">
+          <div class="k">Músicas lançadas</div>
+          <div class="v">${released.length}</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Projetos em construção</div>
+          <div class="v">${projects.length}</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Acesso</div>
+          <div class="v" style="font-size:14px;color:rgba(255,255,255,.84);font-weight:760;margin-top:10px;">
+            ${esc(sess.role === "admin" ? "Admin total" : "Área do artista")}
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
-function renderContrato() {
+function renderContrato(sess) {
   const d = DataStore.data;
-  const pdf = d.meta.contractPdfPath || "./assets/contrato-assinado.pdf";
+
+  let pdf = "./assets/contratos/contrato-padrao.pdf";
+  if (sess.role === "admin") {
+    pdf = "./assets/contratos/contrato-padrao.pdf";
+  } else {
+    const artist = DataStore.getArtistById(sess.artistId);
+    pdf = artist?.contractPdfPath || pdf;
+  }
 
   return `
-    ${pageHeader("Contrato assinado (PDF)", "Baixe o documento oficial do contrato já assinado.")}
+    ${pageHeader("Contrato assinado (PDF)", sess.role === "admin" ? "Admin: coloque contratos em assets/contratos/." : "Seu contrato está disponível para download.")}
     <div class="panel">
       <div class="row">
         <a class="btn btn-gold" href="${esc(pdf)}" download>Download do PDF</a>
@@ -324,18 +335,20 @@ function renderContrato() {
       </div>
       <hr class="sep" />
       <p class="section-subtitle">
-        Caminho do arquivo: <b>${esc(pdf)}</b><br/>
-        Coloque seu PDF real em <b>assets/contrato-assinado.pdf</b>.
+        Arquivo: <b>${esc(pdf)}</b><br/>
+        Dica: use <b>assets/contratos/artista-XXX.pdf</b> para cada artista.
       </p>
     </div>
   `;
 }
 
-function renderLancadas() {
+function renderLancadas(sess) {
   const d = DataStore.data;
-  if (!d.releasedTracks.length) return emptyState("Ainda não há músicas lançadas cadastradas.");
+  const list = filterByArtist(sess, d.releasedTracks);
 
-  const rows = d.releasedTracks.map(t => `
+  if (!list.length) return emptyState("Ainda não há músicas lançadas cadastradas para este perfil.");
+
+  const rows = list.map(t => `
     <tr>
       <td><b>${esc(t.title)}</b><div class="item-meta">${esc(t.artist || "—")}</div></td>
       <td>${esc(formatDateBR(t.releaseDate))}</td>
@@ -365,15 +378,16 @@ function renderLancadas() {
 
 function renderConstrucao(sess) {
   const d = DataStore.data;
-  if (!d.projects.length) return emptyState("Ainda não há projetos em construção cadastrados.");
+  const projects = filterByArtist(sess, d.projects);
+  if (!projects.length) return emptyState("Ainda não há projetos em construção cadastrados para este perfil.");
 
-  const cards = d.projects.map(p => {
+  const cards = projects.map(p => {
     const doneCount = p.checklist?.filter(c => c.done).length || 0;
     const total = p.checklist?.length || 0;
 
     const checks = (p.checklist || []).map(c => `
       <label class="check ${c.done ? "done" : ""}">
-        <input type="checkbox" data-proj="${esc(p.id)}" data-check="${esc(c.id)}" ${c.done ? "checked" : ""} ${sess.role !== "admin" ? "" : ""} />
+        <input type="checkbox" data-proj="${esc(p.id)}" data-check="${esc(c.id)}" ${c.done ? "checked" : ""} />
         <span class="txt">${esc(c.label)}</span>
       </label>
     `).join("");
@@ -384,7 +398,7 @@ function renderConstrucao(sess) {
           <div>
             <div class="item-title">${esc(p.title)}</div>
             <div class="item-meta">
-              Artista: <b>${esc(p.artist || "—")}</b> • Status: <b>${esc(p.status || "—")}</b> • Meta: <b>${esc(formatDateBR(p.targetRelease))}</b>
+              Status: <b>${esc(p.status || "—")}</b> • Meta: <b>${esc(formatDateBR(p.targetRelease))}</b>
             </div>
           </div>
           <span class="pill gold">${doneCount}/${total} concluído</span>
@@ -402,7 +416,7 @@ function renderConstrucao(sess) {
           <button class="btn btn-ghost" type="button" data-action="markAllOpen" data-proj="${esc(p.id)}">Desmarcar tudo</button>
         </div>
         <p class="section-subtitle" style="margin-top:10px;">
-          Observação: este checklist é salvo no seu dispositivo (localStorage). Use Admin → Exportar JSON para backup.
+          Checklist salva neste dispositivo. (Sem nuvem.)
         </p>
       </div>
     `;
@@ -418,16 +432,14 @@ function renderInfos() {
   const d = DataStore.data;
   if (!d.usefulInfo.length) return emptyState("Nenhuma informação útil cadastrada.");
 
-  const items = d.usefulInfo.map(i => `
-    <div class="panel">
-      <div class="item-title">${esc(i.title)}</div>
-      <p class="section-subtitle" style="margin-top:8px;">${esc(i.content)}</p>
-    </div>
-  `).join("");
-
   return `
     ${pageHeader("Informações úteis", "Orientações para fortalecer lançamentos e a carreira.")}
-    ${items}
+    ${d.usefulInfo.map(i => `
+      <div class="panel">
+        <div class="item-title">${esc(i.title)}</div>
+        <p class="section-subtitle" style="margin-top:8px;">${esc(i.content)}</p>
+      </div>
+    `).join("")}
   `;
 }
 
@@ -469,7 +481,8 @@ function renderLinks() {
         </div>
         <a class="pill gold" href="${esc(l.url)}" target="_blank" rel="noreferrer">Abrir</a>
       </div>
-    </div>
+   
+      </div>
   `).join("");
 
   return `
@@ -487,9 +500,129 @@ function renderLinks() {
   `;
 }
 
+function getMetricKeys(sess) {
+  const series = filterAnalytics(sess, DataStore.data.analytics?.series || []);
+  const keys = new Set(series.map(s => `${s.platform}::${s.metric}`));
+  return [...keys].sort((a,b)=>a.localeCompare(b));
+}
+
+function getSelectedMetricKey(sess) {
+  const keys = getMetricKeys(sess);
+  const saved = localStorage.getItem(METRIC_KEY_STORAGE);
+  if (saved && keys.includes(saved)) return saved;
+  return keys[0] || "";
+}
+
+function setSelectedMetricKey(key) {
+  localStorage.setItem(METRIC_KEY_STORAGE, key);
+}
+
+function openMetricPicker(sess) {
+  const keys = getMetricKeys(sess);
+  if (!keys.length) { toast("Sem dados para selecionar."); return; }
+
+  const label = (k) => {
+    const [p,m] = k.split("::");
+    return `${p} • ${m}`;
+  };
+
+  const choice = prompt(
+    "Selecione a métrica (digite o número):\n" +
+    keys.map((k,i)=>`${i+1}) ${label(k)}`).join("\n") +
+    `\n\nAtual: ${label(getSelectedMetricKey(sess))}`
+  );
+
+  if (!choice) return;
+  const idx = Number(choice) - 1;
+  if (Number.isNaN(idx) || idx < 0 || idx >= keys.length) {
+    toast("Seleção inválida.");
+    return;
+  }
+  setSelectedMetricKey(keys[idx]);
+  toast("Métrica selecionada.");
+  navigate("analytics", sess, { silentToast: true });
+}
+
+function drawChart(canvas, metricKey, sess) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.fillRect(0,0,w,h);
+
+  const seriesAll = filterAnalytics(sess, DataStore.data.analytics?.series || []);
+  const series = seriesAll
+    .filter(s => `${s.platform}::${s.metric}` === metricKey)
+    .map(s => ({...s, t: new Date(s.date).getTime()}))
+    .filter(s => !Number.isNaN(s.t))
+    .sort((a,b)=>a.t-b.t);
+
+  const padL = 70, padR = 24, padT = 24, padB = 52;
+  const X0 = padL, Y0 = padT, X1 = w - padR, Y1 = h - padB;
+
+  ctx.fillStyle = "rgba(242,223,154,0.92)";
+  ctx.font = "700 22px ui-sans-serif,system-ui";
+  const title = metricKey ? metricKey.replace("::"," • ") : "Sem dados";
+  ctx.fillText(title, X0, 26);
+
+  if (!series.length) {
+    ctx.fillStyle = "rgba(255,255,255,0.70)";
+    ctx.font = "500 16px ui-sans-serif,system-ui";
+    ctx.fillText("Sem registros para esta métrica.", X0, 64);
+    return;
+  }
+
+  const vals = series.map(s => Number(s.value)).filter(v => !Number.isNaN(v));
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const span = (maxV - minV) || 1;
+
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  for (let i=0;i<=4;i++){
+    const y = Y0 + (Y1-Y0) * (i/4);
+    ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke();
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,0.70)";
+  ctx.font = "600 12px ui-sans-serif,system-ui";
+  ctx.fillText(String(maxV), 16, Y0 + 8);
+  ctx.fillText(String(minV), 16, Y1);
+
+  const xs = series.map((s,i) => X0 + (X1-X0) * (i/(series.length-1 || 1)));
+  const ys = series.map((s) => {
+    const v = Number(s.value);
+    const t = (v - minV) / span;
+    return Y1 - (Y1-Y0) * t;
+  });
+
+  ctx.strokeStyle = "rgba(215,179,90,0.92)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(xs[0], ys[0]);
+  for (let i=1;i<xs.length;i++) ctx.lineTo(xs[i], ys[i]);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(242,223,154,0.95)";
+  for (let i=0;i<xs.length;i++){
+    ctx.beginPath();
+    ctx.arc(xs[i], ys[i], 4.2, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  const first = series[0], last = series[series.length-1];
+  ctx.fillStyle = "rgba(255,255,255,0.70)";
+  ctx.font = "600 12px ui-sans-serif,system-ui";
+  ctx.fillText(formatDateBR(first.date), X0, h - 18);
+  const lastLabel = formatDateBR(last.date);
+  const measure = ctx.measureText(lastLabel).width;
+  ctx.fillText(lastLabel, X1 - measure, h - 18);
+}
+
 function renderAnalytics(sess) {
   const d = DataStore.data;
-  const series = d.analytics?.series || [];
+  const series = filterAnalytics(sess, d.analytics?.series || []);
   const notes = d.analytics?.notes || "";
 
   const latestByPlatform = {};
@@ -521,7 +654,7 @@ function renderAnalytics(sess) {
   `).join("");
 
   return `
-    ${pageHeader("Analytics", "Painel de números (preenchidos pelo Admin) — fácil de acompanhar em um só lugar.")}
+    ${pageHeader("Analytics", "Dados globais e/ou do artista (sem nuvem).")}
     <div class="panel">
       <div class="grid">
         <div class="col-8">
@@ -529,7 +662,7 @@ function renderAnalytics(sess) {
             <canvas id="chartCanvas" width="1200" height="320"></canvas>
           </div>
           <p class="section-subtitle" style="margin-top:10px;">
-            O gráfico mostra a evolução da métrica selecionada. (Sem bibliotecas externas, leve e estável.)
+            Use “Selecionar métrica” para alternar o gráfico.
           </p>
         </div>
         <div class="col-4">
@@ -561,7 +694,7 @@ function renderAnalytics(sess) {
           </thead>
           <tbody>${rows}</tbody>
         </table>
-      ` : `<div class="item-meta">Sem registros de analytics.</div>`}
+      ` : `<div class="item-meta">Sem registros.</div>`}
     </div>
   `;
 }
@@ -569,14 +702,35 @@ function renderAnalytics(sess) {
 function renderAdmin(sess) {
   const d = DataStore.data;
 
+  const artistOptions = (d.artists || []).map(a => `<option value="${esc(a.id)}">${esc(a.name)} (${esc(a.id)})</option>`).join("");
+
   return `
-    ${pageHeader("Admin", "Alimente dados e faça backup (export/import) com segurança.")}
+    ${pageHeader("Admin", "Insira analytics por artista e faça backup (export/import).")}
     <div class="panel">
       <h3 class="section-title" style="font-size:16px;">Inserir Analytics</h3>
-      <p class="section-subtitle">Adicione um registro por vez (plataforma, métrica, valor e data).</p>
+      <p class="section-subtitle">Escolha escopo: Global ou por artista.</p>
       <hr class="sep" />
 
       <div class="grid">
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="aScope">Escopo</label>
+            <select class="input" id="aScope">
+              <option value="artist">Artista</option>
+              <option value="global">Global</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="form-row">
+            <label class="label" for="aArtist">Artista (se escopo=Artista)</label>
+            <select class="input" id="aArtist">
+              ${artistOptions}
+            </select>
+          </div>
+        </div>
+
         <div class="col-6">
           <div class="form-row">
             <label class="label" for="aPlatform">Plataforma</label>
@@ -589,6 +743,7 @@ function renderAdmin(sess) {
             <input class="input" id="aMetric" placeholder="Ouvintes mensais / Seguidores / Views..." />
           </div>
         </div>
+
         <div class="col-6">
           <div class="form-row">
             <label class="label" for="aValue">Valor</label>
@@ -601,6 +756,7 @@ function renderAdmin(sess) {
             <input class="input" id="aDate" type="date" />
           </div>
         </div>
+
         <div class="col-12">
           <button class="btn btn-gold" id="addAnalyticsBtn" type="button">Adicionar registro</button>
           <button class="btn btn-ghost" id="clearAnalyticsBtn" type="button">Limpar analytics (cuidado)</button>
@@ -616,10 +772,8 @@ function renderAdmin(sess) {
     </div>
 
     <div class="panel">
-      <h3 class="section-title" style="font-size:16px;">Backup de Dados (Export / Import)</h3>
-      <p class="section-subtitle">
-        Use exportação para salvar um JSON no seu computador e importação para restaurar em outro dispositivo.
-      </p>
+      <h3 class="section-title" style="font-size:16px;">Backup de Dados</h3>
+      <p class="section-subtitle">Exporta/importa JSON (sem nuvem).</p>
       <hr class="sep" />
       <div class="row">
         <button class="btn btn-gold" id="exportBtn" type="button">Exportar JSON</button>
@@ -631,38 +785,36 @@ function renderAdmin(sess) {
       <div class="row" style="margin-top:10px;">
         <button class="btn btn-gold" id="importBtn" type="button">Importar</button>
       </div>
-      <p class="section-subtitle" style="margin-top:10px;">
-        Regra anti-quebra: só aceita JSON com estrutura válida (meta, projects, links, events, analytics.series, etc.).
-      </p>
     </div>
   `;
 }
 
-/* ---------- Events wiring per page ---------- */
+/* ---------- Page events ---------- */
 function bindPageEvents(sess, routeKey) {
-  // Checklist toggles
   UI.page.querySelectorAll('input[type="checkbox"][data-proj][data-check]').forEach(cb => {
     cb.addEventListener("change", () => {
       const projId = cb.getAttribute("data-proj");
       const checkId = cb.getAttribute("data-check");
       const proj = DataStore.data.projects.find(p => p.id === projId);
       if (!proj) return;
+      if (sess.role !== "admin" && proj.artistId !== sess.artistId) return;
+
       const c = (proj.checklist || []).find(x => x.id === checkId);
       if (!c) return;
 
       c.done = cb.checked;
       DataStore.save();
-      // re-render only route to update counts/classes
       navigate(routeKey, sess, { silentToast: true });
     });
   });
 
-  // Bulk buttons
   UI.page.querySelectorAll('[data-action="markAllDone"][data-proj]').forEach(btn => {
     btn.addEventListener("click", () => {
       const projId = btn.getAttribute("data-proj");
       const proj = DataStore.data.projects.find(p => p.id === projId);
       if (!proj) return;
+      if (sess.role !== "admin" && proj.artistId !== sess.artistId) return;
+
       (proj.checklist || []).forEach(x => x.done = true);
       DataStore.save();
       toast("Checklist: tudo concluído.");
@@ -675,6 +827,8 @@ function bindPageEvents(sess, routeKey) {
       const projId = btn.getAttribute("data-proj");
       const proj = DataStore.data.projects.find(p => p.id === projId);
       if (!proj) return;
+      if (sess.role !== "admin" && proj.artistId !== sess.artistId) return;
+
       (proj.checklist || []).forEach(x => x.done = false);
       DataStore.save();
       toast("Checklist: tudo desmarcado.");
@@ -682,15 +836,18 @@ function bindPageEvents(sess, routeKey) {
     });
   });
 
-  // Analytics chart selection
   const chartSelectBtn = $("#chartSelectBtn", UI.page);
   if (chartSelectBtn) {
-    chartSelectBtn.addEventListener("click", () => {
-      openMetricPicker();
-    });
+    chartSelectBtn.addEventListener("click", () => openMetricPicker(sess));
   }
 
-  // Admin bindings
+  if (routeKey === "analytics") {
+    setTimeout(() => {
+      const c = $("#chartCanvas", UI.page);
+      if (c) drawChart(c, getSelectedMetricKey(sess), sess);
+    }, 0);
+  }
+
   if (routeKey === "admin") {
     const addBtn = $("#addAnalyticsBtn", UI.page);
     const clearBtn = $("#clearAnalyticsBtn", UI.page);
@@ -700,17 +857,28 @@ function bindPageEvents(sess, routeKey) {
     const saveNotesBtn = $("#saveNotesBtn", UI.page);
 
     addBtn?.addEventListener("click", () => {
+      const scope = ($("#aScope", UI.page).value || "artist").trim();
+      const artistId = ($("#aArtist", UI.page).value || "").trim();
+
       const platform = ($("#aPlatform", UI.page).value || "").trim();
       const metric = ($("#aMetric", UI.page).value || "").trim();
       const valueRaw = ($("#aValue", UI.page).value || "").trim();
       const date = ($("#aDate", UI.page).value || "").trim();
-
       const value = Number(valueRaw);
+
       if (!platform || !metric || !date || Number.isNaN(value)) {
-        toast("Preencha plataforma, métrica, valor (número) e data.");
+        toast("Preencha plataforma, métrica, valor e data.");
         return;
       }
-      DataStore.data.analytics.series.push({ platform, metric, value, date });
+      if (scope === "artist" && !artistId) {
+        toast("Selecione o artista.");
+        return;
+      }
+
+      const entry = { scope, platform, metric, value, date };
+      if (scope === "artist") entry.artistId = artistId;
+
+      DataStore.data.analytics.series.push(entry);
       DataStore.save();
       toast("Registro adicionado.");
       location.hash = "#/analytics";
@@ -745,7 +913,7 @@ function bindPageEvents(sess, routeKey) {
     });
 
     resetBtn?.addEventListener("click", () => {
-      const ok = confirm("Resetar para padrão? Você perderá dados editados no dispositivo.");
+      const ok = confirm("Resetar para padrão? Você perderá dados editados neste dispositivo.");
       if (!ok) return;
       DataStore.resetToBase();
       toast("Reset concluído.");
@@ -761,151 +929,6 @@ function bindPageEvents(sess, routeKey) {
       location.hash = "#/dashboard";
     });
   }
-
-  // After analytics render: draw chart if exists
-  if (routeKey === "analytics") {
-    setTimeout(() => {
-      const c = $("#chartCanvas", UI.page);
-      if (c) drawChart(c, getSelectedMetricKey());
-    }, 0);
-  }
-}
-
-/* ---------- Chart (no libs) ---------- */
-const METRIC_KEY_STORAGE = "vp.analytics.selectedMetric.v1";
-
-function getMetricKeys() {
-  const series = DataStore.data.analytics?.series || [];
-  const keys = new Set(series.map(s => `${s.platform}::${s.metric}`));
-  return [...keys].sort((a,b)=>a.localeCompare(b));
-}
-
-function getSelectedMetricKey() {
-  const keys = getMetricKeys();
-  const saved = localStorage.getItem(METRIC_KEY_STORAGE);
-  if (saved && keys.includes(saved)) return saved;
-  return keys[0] || "";
-}
-
-function setSelectedMetricKey(key) {
-  localStorage.setItem(METRIC_KEY_STORAGE, key);
-}
-
-function openMetricPicker() {
-  const keys = getMetricKeys();
-  if (!keys.length) { toast("Sem dados para selecionar."); return; }
-
-  const label = (k) => {
-    const [p,m] = k.split("::");
-    return `${p} • ${m}`;
-  };
-
-  const choice = prompt(
-    "Selecione a métrica (digite o número):\n" +
-    keys.map((k,i)=>`${i+1}) ${label(k)}`).join("\n") +
-    `\n\nAtual: ${label(getSelectedMetricKey())}`
-  );
-
-  if (!choice) return;
-  const idx = Number(choice) - 1;
-  if (Number.isNaN(idx) || idx < 0 || idx >= keys.length) {
-    toast("Seleção inválida.");
-    return;
-  }
-  setSelectedMetricKey(keys[idx]);
-  toast("Métrica selecionada.");
-  // re-render analytics
-  const sess = Auth.get();
-  navigate("analytics", sess, { silentToast: true });
-}
-
-function drawChart(canvas, metricKey) {
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width, h = canvas.height;
-
-  // clear
-  ctx.clearRect(0,0,w,h);
-
-  // backdrop
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
-  ctx.fillRect(0,0,w,h);
-
-  // pick series
-  const series = (DataStore.data.analytics?.series || [])
-    .filter(s => `${s.platform}::${s.metric}` === metricKey)
-    .map(s => ({...s, t: new Date(s.date).getTime()}))
-    .filter(s => !Number.isNaN(s.t))
-    .sort((a,b)=>a.t-b.t);
-
-  // axes margins
-  const padL = 70, padR = 24, padT = 24, padB = 52;
-  const X0 = padL, Y0 = padT, X1 = w - padR, Y1 = h - padB;
-
-  // Title
-  ctx.fillStyle = "rgba(242,223,154,0.92)";
-  ctx.font = "700 22px ui-sans-serif,system-ui";
-  const title = metricKey ? metricKey.replace("::"," • ") : "Sem dados";
-  ctx.fillText(title, X0, 26);
-
-  // If no data
-  if (!series.length) {
-    ctx.fillStyle = "rgba(255,255,255,0.70)";
-    ctx.font = "500 16px ui-sans-serif,system-ui";
-    ctx.fillText("Sem registros para esta métrica.", X0, 64);
-    return;
-  }
-
-  const vals = series.map(s => Number(s.value)).filter(v => !Number.isNaN(v));
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
-  const span = (maxV - minV) || 1;
-
-  // grid lines (y)
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = 1;
-  for (let i=0;i<=4;i++){
-    const y = Y0 + (Y1-Y0) * (i/4);
-    ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(X1, y); ctx.stroke();
-  }
-
-  // axes labels
-  ctx.fillStyle = "rgba(255,255,255,0.70)";
-  ctx.font = "600 12px ui-sans-serif,system-ui";
-  ctx.fillText(String(maxV), 16, Y0 + 8);
-  ctx.fillText(String(minV), 16, Y1);
-
-  // map
-  const xs = series.map((s,i) => X0 + (X1-X0) * (i/(series.length-1 || 1)));
-  const ys = series.map((s) => {
-    const v = Number(s.value);
-    const t = (v - minV) / span;
-    return Y1 - (Y1-Y0) * t;
-  });
-
-  // line
-  ctx.strokeStyle = "rgba(215,179,90,0.92)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(xs[0], ys[0]);
-  for (let i=1;i<xs.length;i++) ctx.lineTo(xs[i], ys[i]);
-  ctx.stroke();
-
-  // points
-  ctx.fillStyle = "rgba(242,223,154,0.95)";
-  for (let i=0;i<xs.length;i++){
-    ctx.beginPath();
-    ctx.arc(xs[i], ys[i], 4.2, 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  // x labels (first/last)
-  const first = series[0], last = series[series.length-1];
-  ctx.fillStyle = "rgba(255,255,255,0.70)";
-  ctx.font = "600 12px ui-sans-serif,system-ui";
-  ctx.fillText(formatDateBR(first.date), X0, h - 18);
-  const lastLabel = formatDateBR(last.date);
-  const measure = ctx.measureText(lastLabel).width;
-  ctx.fillText(lastLabel, X1 - measure, h - 18);
 }
 
 /* ---------- Router ---------- */
@@ -913,14 +936,8 @@ function navigate(routeKey, sess, opts = {}) {
   const r = ROUTES[routeKey] || ROUTES.dashboard;
   UI.pageTitle.textContent = r.title;
   setActiveNav(routeKey);
-
   UI.page.innerHTML = r.render(sess);
-
   bindPageEvents(sess, routeKey);
-
-  if (!opts.silentToast) {
-    // no toast by default; keep calm
-  }
 }
 
 function onRouteChange() {
@@ -960,33 +977,37 @@ UI.installBtn.addEventListener("click", async () => {
 
 /* ---------- Boot ---------- */
 async function boot() {
-  // SW
   if ("serviceWorker" in navigator) {
-    try {
-      await navigator.serviceWorker.register("./service-worker.js");
-    } catch {
-      // silencioso
-    }
+    try { await navigator.serviceWorker.register("./service-worker.js"); } catch {}
   }
 
   await DataStore.init();
 
-  // login
   $("#loginForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    const u = ($("#loginUser").value || "").trim();
-    const p = ($("#loginPass").value || "").trim();
-    const sess = Auth.login(u,p);
-    if (!sess) {
+    const username = ($("#loginUser").value || "").trim();
+    const password = ($("#loginPass").value || "").trim();
+
+    const user = DataStore.findUser(username, password);
+    if (!user) {
       toast("Usuário ou senha inválidos.");
       return;
     }
+
+    const session = {
+      username: user.username,
+      role: user.role,
+      display: user.display || user.username,
+      artistId: user.artistId || null,
+      ts: Date.now()
+    };
+
+    Auth.set(session);
     toast("Bem-vindo(a).");
     location.hash = "#/dashboard";
     onRouteChange();
   });
 
-  // logout
   UI.logoutBtn.addEventListener("click", () => {
     Auth.clear();
     toast("Sessão encerrada.");
@@ -994,13 +1015,11 @@ async function boot() {
     onRouteChange();
   });
 
-  // mobile menu
   UI.mobileMenuBtn.addEventListener("click", () => {
     const isOpen = UI.sidebar.classList.contains("open");
     openSidebar(!isOpen);
   });
 
-  // close sidebar when clicking outside on mobile
   document.addEventListener("click", (e) => {
     if (window.matchMedia("(max-width: 980px)").matches) {
       const clickedInsideSidebar = UI.sidebar.contains(e.target);
@@ -1009,10 +1028,8 @@ async function boot() {
     }
   });
 
-  // route
   window.addEventListener("hashchange", onRouteChange);
 
-  // initial route
   if (!location.hash) location.hash = "#/dashboard";
   onRouteChange();
 }
