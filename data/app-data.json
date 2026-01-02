@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "portalName": "Vale Produção — Portal",
+    "contractPdfPath": "./assets/contrato-assinado.pdf",
+    "spotifyProfile": "https://open.spotify.com/",
+    "lastUpdatedISO": "2026-01-01T00:00:00.000Z"
+  },
+  "artists": [
+    {
+      "id": "artista-001",
+      "name": "Artista Exemplo",
+      "genre": "Pop/Gospel",
+      "contact": "contato@exemplo.com"
+    }
+  ],
+  "releasedTracks": [
+    {
+      "title": "Single Exemplo",
+      "artist": "Artista Exemplo",
+      "releaseDate": "2025-12-20",
+      "spotifyUrl": "https://open.spotify.com/",
+      "youtubeUrl": "https://youtube.com/"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-001",
+      "title": "EP — Em Construção",
+      "artist": "Artista Exemplo",
+      "targetRelease": "2026-03-20",
+      "status": "Produção",
+      "notes": "Direção artística em andamento. Ajustar timbres e revisar mix final.",
+      "checklist": [
+        { "id": "c1", "label": "Briefing e referência sonora", "done": true },
+        { "id": "c2", "label": "Pré-produção (guia / clique / estrutura)", "done": true },
+        { "id": "c3", "label": "Gravação (voz e instrumentos)", "done": false },
+        { "id": "c4", "label": "Edição e afinação", "done": false },
+        { "id": "c5", "label": "Mixagem", "done": false },
+        { "id": "c6", "label": "Masterização", "done": false },
+        { "id": "c7", "label": "Capa e identidade visual", "done": false },
+        { "id": "c8", "label": "Distribuição (Spotify/Deezer/Apple)", "done": false },
+        { "id": "c9", "label": "Press kit / conteúdo de divulgação", "done": false },
+        { "id": "c10", "label": "Lançamento + pós-lançamento", "done": false }
+      ]
+    }
+  ],
+  "usefulInfo": [
+    {
+      "title": "Checklist pré-lançamento (rápido)",
+      "content": "Organize capa, ISRC, ficha técnica, pitch, agenda de conteúdo e link na bio. Defina data e plano mínimo de anúncios."
+    },
+    {
+      "title": "Boas práticas de lançamento",
+      "content": "Evite mudanças de áudio/capa perto da data. Alinhe o pré-save e publique conteúdo curto (reels/tiktok) 7–14 dias antes."
+    }
+  ],
+  "events": [
+    {
+      "title": "Ensaio Geral",
+      "date": "2026-02-10",
+      "location": "Studio Vale Produção",
+      "details": "Revisar repertório e performance. Chegar 30 min antes."
+    }
+  ],
+  "links": [
+    { "label": "Spotify", "url": "https://open.spotify.com/" },
+    { "label": "Instagram", "url": "https://instagram.com/" },
+    { "label": "YouTube", "url": "https://youtube.com/" },
+    { "label": "WhatsApp", "url": "https://wa.me/" }
+  ],
+  "analytics": {
+    "notes": "Dados inseridos pelo Admin. Use export/import para backup.",
+    "series": [
+      { "platform": "Spotify", "metric": "Ouvintes mensais", "value": 1200, "date": "2025-12-01" },
+      { "platform": "Instagram", "metric": "Seguidores", "value": 3400, "date": "2025-12-01" },
+      { "platform": "YouTube", "metric": "Inscritos", "value": 560, "date": "2025-12-01" }
+    ]
+  }
+}
