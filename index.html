@@ -85,8 +85,13 @@
         <div class="fineprint">
           <div class="fineprint-title">Vale Produção</div>
           <div class="fineprint-text">PWA instalável • Login individual</div>
-          <div class="fineprint-rights">© <span id="yearNowA">2026</span> Vale Produção. Todos os direitos reservados.</div>
-          <div class="fineprint-rights">Construído por Jonatan Vale.</div>
+
+          <div class="fineprint-rights">
+            © <span id="yearNowA">2026</span> Vale Produção. Todos os direitos reservados.
+          </div>
+          <div class="fineprint-rights">
+            Criado por Jonatan Vale.
+          </div>
         </div>
       </div>
     </aside>
@@ -107,7 +112,7 @@
             <form id="loginForm" class="form">
               <div class="form-row">
                 <label class="label" for="loginUser">Usuário</label>
-                <input id="loginUser" class="input" autocomplete="username" placeholder="ex: arianemazur" required />
+                <input id="loginUser" class="input" autocomplete="username" placeholder="Digite seu usuário" required />
               </div>
 
               <div class="form-row">
@@ -117,22 +122,10 @@
 
               <button class="btn btn-gold btn-block" type="submit">Entrar</button>
 
-              <div class="hint">
-                <div class="hint-title">Admin (padrão)</div>
-                <div class="hint-line"><b>admin</b> / <b>1234</b></div>
-                <div class="hint-line" style="margin-top:8px;opacity:.85">
-                  Troque as senhas no arquivo <b>data/app-data.json</b> quando quiser.
-                </div>
-              </div>
-
               <div class="login-rights">
-                © <span id="yearNowB">2026</span> Vale Produção. Todos os direitos reservados. • Construído por Jonatan Vale.
+                © <span id="yearNowB">2026</span> Vale Produção. Todos os direitos reservados. • Criado por Jonatan Vale.
               </div>
             </form>
-          </div>
-
-          <div class="mini-note">
-            Sem nuvem paga: atualizações chegam via GitHub/Vercel (arquivo <b>data/app-data.json</b>).
           </div>
         </div>
       </section>
@@ -159,7 +152,6 @@
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <script>
-    // Ano automático no rodapé (sem depender do app.js)
     (function(){
       const y = new Date().getFullYear();
       const a = document.getElementById("yearNowA");
