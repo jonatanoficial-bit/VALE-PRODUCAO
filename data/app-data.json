@@ -1,52 +1,110 @@
 {
   "meta": {
     "portalName": "Vale Produção — Portal",
-    "lastUpdatedISO": "2026-01-01T00:00:00.000Z",
+    "lastUpdatedISO": "2026-01-06T00:00:00.000Z",
     "spotifyProfile": "https://open.spotify.com/"
   },
   "users": [
-    { "username": "admin", "password": "ariane22", "role": "admin", "display": "Admin • Vale Produção" },
-
-    { "username": "arianemazur", "password": "1234", "role": "artist", "artistId": "artista-001", "display": "Ariane Mazur" },
-    { "username": "dafnykamila", "password": "1234", "role": "artist", "artistId": "artista-002", "display": "Dafny Kamila" },
-    { "username": "atalaiaindio", "password": "1234", "role": "artist", "artistId": "artista-003", "display": "Ataláia Indio" },
-    { "username": "fabiooliveira", "password": "1234", "role": "artist", "artistId": "artista-004", "display": "Fabio Oliveira" },
-    { "username": "danieloly", "password": "1234", "role": "artist", "artistId": "artista-005", "display": "Daniel Oly" },
-    { "username": "juhsilva", "password": "1234", "role": "artist", "artistId": "artista-006", "display": "Juh Silva" },
-    { "username": "negosilva", "password": "1234", "role": "artist", "artistId": "artista-007", "display": "Nego Silva" }
+    {
+      "username": "admin",
+      "password": "A9x2",
+      "role": "admin",
+      "display": "Admin • Vale Produção"
+    },
+    {
+      "username": "arianemazur",
+      "password": "M4q7",
+      "role": "artist",
+      "artistId": "artista-001",
+      "display": "Ariane Mazur"
+    },
+    {
+      "username": "dafnykamila",
+      "password": "K8p3",
+      "role": "artist",
+      "artistId": "artista-002",
+      "display": "Dafny Kamila"
+    },
+    {
+      "username": "atalaiaindio",
+      "password": "Z2L9",
+      "role": "artist",
+      "artistId": "artista-003",
+      "display": "Ataláia Indio"
+    },
+    {
+      "username": "fabiooliveira",
+      "password": "R5w1",
+      "role": "artist",
+      "artistId": "artista-004",
+      "display": "Fabio Oliveira"
+    },
+    {
+      "username": "danieloly",
+      "password": "T7N4",
+      "role": "artist",
+      "artistId": "artista-005",
+      "display": "Daniel Oly"
+    },
+    {
+      "username": "juhsilva",
+      "password": "C6B8",
+      "role": "artist",
+      "artistId": "artista-006",
+      "display": "Juh Silva"
+    },
+    {
+      "username": "negosilva",
+      "password": "Y9F2",
+      "role": "artist",
+      "artistId": "artista-007",
+      "display": "Nego Silva"
+    }
   ],
   "artists": [
-    { "id": "artista-001", "name": "Ariane Mazur", "contractPdfPath": "./assets/contratos/artista-001.pdf" },
-    { "id": "artista-002", "name": "Dafny Kamila", "contractPdfPath": "./assets/contratos/artista-002.pdf" },
-    { "id": "artista-003", "name": "Ataláia Indio", "contractPdfPath": "./assets/contratos/artista-003.pdf" },
-    { "id": "artista-004", "name": "Fabio Oliveira", "contractPdfPath": "./assets/contratos/artista-004.pdf" },
-    { "id": "artista-005", "name": "Daniel Oly", "contractPdfPath": "./assets/contratos/artista-005.pdf" },
-    { "id": "artista-006", "name": "Juh Silva", "contractPdfPath": "./assets/contratos/artista-006.pdf" },
-    { "id": "artista-007", "name": "Nego Silva", "contractPdfPath": "./assets/contratos/artista-007.pdf" }
+    {
+      "id": "artista-001",
+      "name": "Ariane Mazur",
+      "contractPdfPath": "./assets/contratos/artista-001.pdf"
+    },
+    {
+      "id": "artista-002",
+      "name": "Dafny Kamila",
+      "contractPdfPath": "./assets/contratos/artista-002.pdf"
+    },
+    {
+      "id": "artista-003",
+      "name": "Ataláia Indio",
+      "contractPdfPath": "./assets/contratos/artista-003.pdf"
+    },
+    {
+      "id": "artista-004",
+      "name": "Fabio Oliveira",
+      "contractPdfPath": "./assets/contratos/artista-004.pdf"
+    },
+    {
+      "id": "artista-005",
+      "name": "Daniel Oly",
+      "contractPdfPath": "./assets/contratos/artista-005.pdf"
+    },
+    {
+      "id": "artista-006",
+      "name": "Juh Silva",
+      "contractPdfPath": "./assets/contratos/artista-006.pdf"
+    },
+    {
+      "id": "artista-007",
+      "name": "Nego Silva",
+      "contractPdfPath": "./assets/contratos/artista-007.pdf"
+    }
   ],
   "releasedTracks": [],
   "projects": [],
-  "usefulInfo": [
-    {
-      "title": "Checklist pré-lançamento (rápido)",
-      "content": "Organize capa, ISRC, ficha técnica, pitch, agenda de conteúdo e link na bio. Defina data e plano mínimo de anúncios."
-    },
-    {
-      "title": "Boas práticas de lançamento",
-      "content": "Evite mudanças de áudio/capa perto da data. Alinhe o pré-save e publique conteúdo curto (reels/tiktok) 7–14 dias antes."
-    }
-  ],
+  "usefulInfo": [],
   "events": [],
   "links": [
     { "label": "Spotify", "url": "https://open.spotify.com/" },
     { "label": "Instagram", "url": "https://instagram.com/" },
-    { "label": "YouTube", "url": "https://youtube.com/" },
-    { "label": "WhatsApp", "url": "https://wa.me/" }
-  ],
-  "analytics": {
-    "notes": "Dados inseridos pelo Admin.",
-    "series": [
-      { "scope": "global", "platform": "Geral", "metric": "Artistas oficiais", "value": 7, "date": "2026-01-01" }
-    ]
-  }
+    { "label": "YouTube", "url": "https://youtube.com/" }
+  ]
 }
